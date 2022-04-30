@@ -1,0 +1,38 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[114.33326848780293, -30.516664727629696],
+          [114.33326848780293, -33.13001898040632],
+          [117.54127630030288, -33.13001898040632],
+          [117.54127630030288, -30.516664727629696]]], null, false),
+    geometry2 = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[111.7845161352076, -31.34865998958838],
+          [111.6197212133326, -32.46777823841946],
+          [112.0262153539576, -31.20781706818479]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// To export features collection into GoogleDrive and also with an URL to download it.
+
+var AOI = geometry
+          
+var Feature_collection = ee.FeatureCollection([AOI]);
+
+// Exportation to GoogleDrive
+Export.table.toDrive({
+  collection: Feature_collection,
+  description: 'Perth',
+  fileFormat: 'SHP'});
+
+// URL export and direct download
+var URLDownload = Feature_collection.getDownloadURL({
+  format: 'SHP',     
+  filename: 'Perth'});
+print ('Link to download', URLDownload);
+
+Map.centerObject(AOI,7)
+

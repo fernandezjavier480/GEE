@@ -1,0 +1,48 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var SILO_ic = ee.ImageCollection("projects/eo-datascience-public/assets/silo_daily"),
+    geometry = 
+    /* color: #98ff00 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[114.9750833777748, -30.466075663237522],
+          [114.9750833777748, -32.34133335624674],
+          [116.99656775277478, -32.34133335624674],
+          [116.99656775277478, -30.466075663237522]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//define region of interest
+
+var AOI = geometry
+
+
+var SILO = SILO_ic.filterDate("2001-01-01","2001-01-02")
+print(SILO)
+
+
+//Call the image from the collection
+var SILO_image = ee.Image ('projects/eo-datascience-public/assets/silo_daily/2001_1');
+
+//Add the image into the map
+Map.addLayer (SILO_image, {max: 15, min: 0, bands: ["daily_rain"], 
+palette: ["red","blue","green"]}, 
+     'Image to export');
+
+//Export the image to drive
+Export.image.toDrive({
+  image: SILO_image.select("daily_rain"),
+  description: 'Image to download',
+  scale: 5000});
+
+// Export through URL
+var URLDownload = SILO_image.getDownloadURL({
+'scale': 5000,
+"region": geometry
+});
+print('Link download',URLDownload);
+
+
+
+Map.centerObject (SILO_image); 

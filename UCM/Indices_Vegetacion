@@ -1,0 +1,60 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var l8sr = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR"),
+    geometry = /* color: #57d60f */ee.Geometry.Point([-71.60319366547813, 12.09333603101767]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                    INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                             ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                               Índices de Veg
+ ===========================================================================================*/
+/*Mapear una función sobre una colección es clave para que Earth Engine funcione. Comience desde
+la sección anterior o al menos las mismas importaciones. Asigne una función simple sobre una lista.
+Use la lista para algo útil (hacer composiciones anuales). Romper cosas.
+● Utilice map() en lugar de bucles for para aplicar una operación a cada 
+elemento de una colección. (Todavía necesita bucles for para algunas cosas 
+del lado del cliente, como las interfaces de usuario).*/
+//===========================================================================================//
+
+
+// Obtenga las imágenes con huellas que se cruzan con el punto.
+var spatialFiltered = l8sr.filterBounds(geometry);
+print(spatialFiltered);
+
+// Obtenga una única imagen de prueba.
+var testImage = spatialFiltered.first();
+print(testImage);
+
+// Defina una función que agregará una banda NDVI a una imagen Landsat 8.
+var addNDVI = function(image) {
+  var ndvi = image.normalizedDifference(['B5', 'B4']).rename('NDVI');
+  return image.addBands(ndvi);
+};
+// Prueba la función. Al hacerlo de esta manera, puede tener
+// sentencias print() en la función (porque no es map() ed).
+
+var ndviVisParams = {
+  bands: 'NDVI', 
+  min: 0, 
+  max: 1, 
+  palette: ['white', 'green']
+};
+
+Map.addLayer(addNDVI(testImage),ndviVisParams,'test NDVI');
+//Si la función funciona, elimine las declaraciones print() de ella
+//Ahora mapea la función sobre toda la colección
+var conNDVI=l8sr.map(addNDVI);
+
+//verificar que todas las img de la collection tengan NDVI
+Map.addLayer (conNDVI.select("NDVI"),ndviVisParams,"18sr con NDVI");
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+

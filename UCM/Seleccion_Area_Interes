@@ -1,0 +1,74 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var limites = ee.FeatureCollection("FAO/GAUL/2015/level2");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//*******************************************************************************************
+//                      1. SELECCIONA UN ÁREA DE INTERÉS - AOI -    
+
+/* Definición de una zona de estudio AOI, a partir de la Capa de Unidades Administrativas Globales
+   (GAUL), la cual compila las unidades administrativas para todos los países del mundo. 
+   El GAUL siempre mantiene capas globales con un sistema de codificación unificado, primero 
+   (Nivel 0: Países, Nivel:1 Departamentos o estados y Nivel 2: Municipios o distritos).
+   Reemplace las variables en rojo de país, región y municipio: */
+   
+   
+// Cargar en una variable la colección de límites administrativos nivel 1 (departamentos)
+
+
+// Definir una variable que contenga el nombre del país de interés nivel 0
+var pais = 'Colombia';
+
+// Definir una variable que contenga el nombre del departamento de interés nivel 1
+var region = 'Caldas';
+
+// Definir una variable que contenga el nombre del municipio de interés nivel 2
+var municipio = 'Manizales';
+
+// Crear una variable con la colección filtrada de limites administrativos filtrada por país y departamento
+var AOI= limites.filter(ee.Filter.eq('ADM0_NAME', pais))
+                .filter(ee.Filter.eq('ADM1_NAME', region))
+                .filter(ee.Filter.eq('ADM2_NAME', municipio));
+
+//Mostrar en la consola la colección filtrada a límite de interés
+print (AOI, 'Área de Interés:' + municipio + ' ' + region + ' ' + pais);
+
+Map.addLayer(AOI,false);
+
+
+var municipio2 = 'Villamaria';
+
+// Crear una variable con la colección filtrada de limites administrativos filtrada por país y departamento
+var AOI2= limites.filter(ee.Filter.eq('ADM0_NAME', pais))
+                .filter(ee.Filter.eq('ADM1_NAME', region))
+                .filter(ee.Filter.eq('ADM2_NAME', municipio2));
+
+Map.addLayer(AOI2,false);
+
+var vacia2 = ee.Image().byte();  
+var linea2 = vacia2.paint({
+  'featureCollection': AOI2,
+  'color': 1,
+  'width': 1.5
+});
+
+// Imprimir el vector del AOI2, puede traer el nombre de las variables ya definidas anteriormente:
+Map.addLayer(linea2, {'palette': '0204ff'}, 'Área de Interés:' + municipio2 + ' ' + region + ' ' + pais, false);
+
+// Fusionamos los dos vectores, pero aun conservando sus geometrías por separado:
+var conbineAOI = AOI.merge(AOI2);
+
+// Obtenemos la unión de las geometrías AOI en un solo polígono conectado:
+var countyConnectDiss=conbineAOI.union();
+
+// Creamos una capa vacía y adicionamos el vector.
+var vacia3 = ee.Image().byte();  
+var linea3 = vacia3.paint({
+  'featureCollection': countyConnectDiss,
+  'color': 1,
+  'width': 2.5
+});
+
+// Imprimir el vector final AOI, que contendrá las capas disueltas anteriormente:
+Map.addLayer(linea3, {'palette': 'red'}, 'AOI conbinadas:' + municipio2 + ' ' + municipio + ' ' + region + ' ' + pais);
+
+// Centrar el mapa en la zona de interés
+Map.centerObject(countyConnectDiss);

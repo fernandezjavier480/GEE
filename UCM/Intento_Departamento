@@ -1,0 +1,66 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var limites = ee.FeatureCollection("FAO/GAUL/2015/level2");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var pais = 'Colombia'
+//DEPARTAMENTO 1-ATLANTICO
+var departamento = 'Atlantico';
+var departamento1= 'Bolivar';
+// Crear una variable con la colección filtrada de limites administrativos filtrada por país y departamento
+var AOI= limites.filter(ee.Filter.eq('ADM0_NAME', pais))
+                .filter(ee.Filter.eq('ADM1_NAME', departamento))
+                .filter(ee.Filter.eq('ADM1_NAME', departamento1));
+
+var vacia2 = ee.Image().byte();  
+var linea2 = vacia2.paint({
+  'featureCollection': AOI,
+  'color': 1,
+  'width': 1.5
+}); 
+//Mostrar en la consola la colección filtrada a límite de interés
+print (AOI, 'Área de Interés: ' + departamento1 + '' + departamento + ' ' + pais);
+Map.addLayer(AOI);
+
+//Selección de los municipios del Chocó incluidos dentro de la región Caribe
+
+var departamento2 = 'Choco';
+//Municipio de Acandí
+var municipio1 = 'Acandi';
+var municipio2= 'Unguia';
+
+// Crear una variable con la colección filtrada de limites administrativos filtrada por país y departamento
+var AOI2= limites.filter(ee.Filter.eq('ADM0_NAME', pais))
+                .filter(ee.Filter.eq('ADM1_NAME', departamento2))
+                .filter(ee.Filter.eq('ADM2_NAME', municipio1))
+                .filter(ee.Filter.eq('ADM2_NAME', municipio2));
+
+Map.addLayer(AOI2);
+
+var vacia2 = ee.Image().byte();  
+var linea2 = vacia2.paint({
+  'featureCollection': AOI2,
+  'color': 1,
+  'width': 1.5
+});
+
+// Imprimir el vector del AOI9, puede traer el nombre de las variables ya definidas anteriormente:
+Map.addLayer(linea2, {'palette': '0204ff'}, 'Área de Interés:' + municipio2 + '' + municipio1 + ' ' + departamento2 + ' ' + pais);
+
+// Fusionamos los dos vectores, pero aun conservando sus geometrías por separado:
+var conbineAOI = AOI.merge(AOI2);
+
+// Obtenemos la unión de las geometrías AOI en un solo polígono conectado:
+var countyConnectDiss=conbineAOI.union();
+
+// Creamos una capa vacía y adicionamos el vector.
+var vacia3 = ee.Image().byte();  
+var linea3 = vacia3.paint({
+  'featureCollection': countyConnectDiss,
+  'color': 1,
+  'width': 2.5
+});
+
+// Imprimir el vector final AOI, que contendrá las capas disueltas anteriormente:
+Map.addLayer(linea3, {'palette': 'red'}, 'AOI conbinadas:' + municipio2 + ' ' + municipio1 + '' + departamento2 + '' + departamento1 + '' + departamento + '' + pais);
+
+// Centrar el mapa en la zona de interés
+Map.centerObject(countyConnectDiss);

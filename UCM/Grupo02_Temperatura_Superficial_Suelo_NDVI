@@ -1,0 +1,223 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var limites = ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level2"),
+    geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-78.02090568135691, 13.060506462113075],
+          [-70.26455835935606, 13.060506462113075],
+          [-78.02090568135691, 5.213791820053848],
+          [-70.26455835935606, 5.213791820053848]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//Encabezado
+var etiqueta =ui.Label({
+  value:'Temperatura superficial del suelo Región Caribe vs NDVI',
+  style:{
+    fontSize: '20px',
+    color:'Black',
+    backgroundColor:'orange'
+  }
+})
+Map.add (etiqueta)
+var pais = 'Colombia';
+//DEPARTAMENTO 1-ATLANTICO
+// Filtraje de Límite departamental de Atlántico
+var departamento = 'Atlantico';
+var AOI= limites.filter(ee.Filter.eq('ADM0_NAME', pais)).filter(ee.Filter.eq('ADM1_NAME', departamento));
+//DEPARTAMENTO 2-BOLIVAR
+// Filtraje de Límite departamental de Bolívar
+var departamento2 = 'Bolivar';
+var AOI2= limites.filter(ee.Filter.eq('ADM0_NAME', pais)).filter(ee.Filter.eq('ADM1_NAME', departamento2));
+//DEPARTAMENTO 3-CESAR
+// Filtraje de Límite departamental de Cesar
+var departamento3 = 'Cesar';
+var AOI3= limites.filter(ee.Filter.eq('ADM0_NAME', pais)).filter(ee.Filter.eq('ADM1_NAME', departamento3));
+//DEPARTAMENTO 4-CORDOBA
+// Filtraje de Límite departamental de Córdoba
+var departamento4 = 'Cordoba';
+var AOI4= limites.filter(ee.Filter.eq('ADM0_NAME', pais)).filter(ee.Filter.eq('ADM1_NAME', departamento4));
+//DEPARTAMENTO 5-LA GUAJIRA
+// Filtraje de Límite departamental de la Guajira
+var departamento5 = 'Guajira';
+var AOI5= limites.filter(ee.Filter.eq('ADM0_NAME', pais)).filter(ee.Filter.eq('ADM1_NAME', departamento5));
+//DEPARTAMENTO 6-MAGDALENA
+// Filtraje de Límite departamental de Magdalena
+var departamento6 = 'Magdalena';
+var AOI6= limites.filter(ee.Filter.eq('ADM0_NAME', pais)).filter(ee.Filter.eq('ADM1_NAME', departamento6));
+//DEPARTAMENTO 7-SUCRE
+var departamento7 = 'Sucre';
+// Filtraje de Límite departamental de Sucre
+var AOI7= limites.filter(ee.Filter.eq('ADM0_NAME', pais)).filter(ee.Filter.eq('ADM1_NAME', departamento7));
+//DEPARTAMENTO 8-ANTIOQUIA
+var departamento8 = 'Antioquia';
+// Filtraje de Límite departamental de Antioquia
+var AOI8= limites.filter(ee.Filter.eq('ADM0_NAME', pais)).filter(ee.Filter.eq('ADM1_NAME', departamento8));
+//Selección de los municipios del Chocó incluidos dentro de la región Caribe
+//Municipio de Acandí
+var departamento9 = 'Choco';
+var municipio1 = 'Acandi';
+var AOI9= limites.filter(ee.Filter.eq('ADM0_NAME', pais))
+                .filter(ee.Filter.eq('ADM1_NAME', departamento9))
+                .filter(ee.Filter.eq('ADM2_NAME', municipio1));
+//Municipio Unguia
+var departamento10 = 'Choco';
+var municipio2 = 'Unguia';
+var AOI10= limites.filter(ee.Filter.eq('ADM0_NAME', pais))
+                .filter(ee.Filter.eq('ADM1_NAME', departamento10))
+                .filter(ee.Filter.eq('ADM2_NAME', municipio2));
+// Fusionamos los dos vectores, pero aun conservando sus geometrías por separado:
+var conbineAOI = AOI.merge(AOI2).merge(AOI3).merge(AOI4).merge(AOI5).merge(AOI6)
+                    .merge(AOI7).merge(AOI8).merge(AOI9).merge(AOI10);
+print(conbineAOI,'combinacion')
+// Obtenemos la unión de las geometrías AOI en un solo polígono conectado:
+var RegionCaribe=conbineAOI.union();
+// Creamos una capa vacía y adicionamos el vector.
+var vacia3 = ee.Image().byte();  
+var contorno = vacia3.paint({
+  'featureCollection': RegionCaribe,
+  'color': 1,
+  'width': 2.5
+});
+// Imprimir el vector final AOI, que contendrá las capas disueltas anteriormente:
+Map.addLayer(contorno, {'palette': 'Black'}, 'Contorno Region Caribe');
+Map.centerObject(RegionCaribe,7);
+
+//Temperatura Superficial del suelo para la Región Caribe Colombiana
+// Importar la colección de Modis usada para el desarrollo del ejercicio 
+var modis = ee.ImageCollection('MODIS/MOD11A2');
+
+//Definir un rango de fecha de interes; a partir de la fecha definida se avanza un año.
+var start = ee.Date('2013-01-01');
+var dateRange = ee.DateRange(start, start.advance(1, 'year'));
+
+//Filtrar la colección de LST (temperatura del suelo) incluyendo unicamente las imagenes deseadas.
+// Rango de datos
+var mod11a2 = modis.filterDate(dateRange);
+
+// Seleccionar solo la banda de datos LST de 1 km al día.
+var modLSTday = mod11a2.select('LST_Day_1km');
+
+// Convertir los valores de grados kelvin a celcius para la imagen.
+var modLSTc = modLSTday.map(function(img) {
+  return img
+    .multiply(0.02)
+    .subtract(273.15)
+    .copyProperties(img, ['system:time_start']);
+});
+
+// Series para la región pacífica Colombiana 2013
+var ts1 = ui.Chart.image.series({
+  imageCollection: modLSTc,
+  region: RegionCaribe,
+  reducer: ee.Reducer.mean(),
+  scale: 1000,
+  xProperty: 'system:time_start'})
+  .setOptions({
+     title: 'LST 2013 Time Series',
+     vAxis: {title: 'LST Celsius'}});
+print(ts1);
+
+// Calculo de la temperatura media para región pacífica Colombiana 2015.
+var clippedLSTc = modLSTc.mean().clip(RegionCaribe);
+
+// Adicionar la capa cortada al mapa principal.
+Map.addLayer(clippedLSTc, {
+  min: 20, max: 40,
+  palette: ['blue', 'limegreen', 'yellow', 'darkorange', 'red']},
+  'Temperatura media, 2013');
+  
+// Exportar el resultado en una carpeta de Drive
+Export.image.toDrive({
+  image: clippedLSTc,
+  description: 'LST_Celsius_ug',
+  folder: 'my_folder',
+  region: RegionCaribe,
+  scale: 1000,
+  crs: 'EPSG:4326',
+  maxPixels: 1e10});
+/////////////////////////////////////////////////////////////////////////////////////////////
+//CALCULO NDVI 2013
+
+region = /* color: #d63000 */geometry;
+
+var col = ee.ImageCollection('MODIS/006/MOD13A2').select('NDVI');
+
+// Definir la geometría por la cual se va a cortar
+
+var mask = RegionCaribe;
+
+// Definir los límites para la generación del GIF
+var region = geometry;
+col = col.map(function(img) {
+  var doy = ee.Date(img.get('system:time_start')).getRelative('day', 'year');
+  return img.set('doy', doy);
+});
+var distinctDOY = col.filterDate('2013-01-01', '2014-01-01');
+
+// Definir un filtro que identifique las imágenes de las de la colección completa
+var filter = ee.Filter.equals({leftField: 'doy', rightField: 'doy'});
+
+// Definir la variable unión 
+var join = ee.Join.saveAll('doy_matches');
+
+// Generar una unión y convertir el resultado de las colecciones a una imagen.
+var joinCol = ee.ImageCollection(join.apply(distinctDOY, col, filter));
+
+// Aplicar reducción media entre las distintas colecciones.
+var comp = joinCol.map(function(img) {
+ var doyCol = ee.ImageCollection.fromImages(
+    img.get('doy_matches')
+  );
+  return doyCol.reduce(ee.Reducer.median());
+});
+
+// Series NDVI para la región pacífica Colombiana 2013
+var Nd1 = ui.Chart.image.series({
+  imageCollection: distinctDOY,
+  region: RegionCaribe,
+  reducer: ee.Reducer.mean(),
+  scale: 1000,
+  xProperty: 'system:time_start'})
+  .setOptions({
+     title: 'NDVI 2013 Time Series',
+     vAxis: {title: 'Intervalo NDVI'}});
+print(Nd1);
+
+//Mapeo de NDVI Promedio
+var NDVI= col.mean().clip(RegionCaribe)
+Map.addLayer(NDVI,
+  {min: 0.0, max: 9000.0,
+  palette:[
+    'FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718', '74A901',
+    '66A000', '529400', '3E8601', '207401', '056201', '004C00', '023B01',
+    '012E01', '011D01', '011301']}
+    ,'NDVI media, 2013');
+
+// Definir párametros RGB
+var visParams = {
+  min: 0.0,
+  max: 9000.0,
+  palette: [
+    'FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718', '74A901',
+    '66A000', '529400', '3E8601', '207401', '056201', '004C00', '023B01',
+    '012E01', '011D01', '011301'
+  ],
+};
+
+// Personalizar la visualización RGB de las imágenes usadas para la animación
+var rgbVis = comp.map(function(img) {
+  return img.visualize(visParams).clip(mask);
+});
+
+// Definir los parámetros de visualización del GIF
+var gifParams = {
+  'region': region,
+  'dimensions': 600,
+  'crs': 'EPSG:4226',
+  'framesPerSecond': 3
+};
+
+// Mostrar el GIF en la consola
+print(ui.Thumbnail(rgbVis, gifParams));
+// Mostrar el URL del GIF
+print(rgbVis.getVideoThumbURL(gifParams));

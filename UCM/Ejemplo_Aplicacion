@@ -1,0 +1,39 @@
+//Ejemplo de apliación 
+
+/*parseInt> es una función de alto nivel y no está asociada a ningún objeto.
+comprueba el primer argumento, una cadena, e intenta devolver un entero de la
+base especificada. Por ejemplo, una base de 10 indica una conversión a número 
+decimal, 8 octal, 16 hexadecimal, y así sucesivamente. Para bases superiores a 
+10, las letras del alfabeto indican numerales mayores que 9. Por ejemplo, para 
+números hexadecimales (base 16), se utiliza de la A hasta la F.*/
+
+/* prompt -  Se llama prompt al carácter o conjunto de caracteres que se muestran
+en una línea de comandos para indicar que está a la espera de órdenes. Este puede 
+variar dependiendo del intérprete de comandos y suele ser configurable.*/
+
+/* .random - Un generador de números aleatorios es un dispositivo informático o 
+físico diseñado para producir secuencias de números sin orden aparente */
+
+//................................................................................
+//........................PROGRAMA ADIVINAR NÚMERO................................
+
+//Definir una variable (0-10)
+var numero = parseInt(prompt("Ingresa un número (del 0 al 10):"));
+var numeroAleatorio = Math.floor(Math.random() * 10);
+debugger;
+if (numeroAleatorio === numero) {
+    console.log("Adivinaste!");
+} else {
+    console.log("Perdiste!, El número es " + numeroAleatorio);
+}
+
+
+
+
+
+
+
+
+
+
+

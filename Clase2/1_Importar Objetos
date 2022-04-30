@@ -1,0 +1,11 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var Cuenca = ee.FeatureCollection("users/juantorres-batllo/cuenca_Mauri"),
+    image = ee.Image("users/juantorres-batllo/Precipitacion_Mauri");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+
+Map.centerObject(Cuenca, 7)
+
+
+Map.addLayer(image, {min:10, max:15, palette:["red", "orange", "green", "blue"]}, "Daily rain")
+Map.addLayer(Cuenca, {}, "Cuenca")

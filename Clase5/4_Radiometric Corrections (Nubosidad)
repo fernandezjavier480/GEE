@@ -1,0 +1,40 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var s2 = ee.ImageCollection("COPERNICUS/S2_SR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+
+var region = ee.Geometry.Point([-73.51523560814569,5.218120151158484])
+
+//////////// Cargar la colección de img
+
+var ic_s2 = s2.filterBounds(region).filterDate("2019-01-01", "2021-12-31")
+
+//// Imprimir un listado con la propiedad que quiero evaluar
+
+var lista_cloudyPerc = ic_s2.aggregate_array("CLOUDY_PIXEL_PERCENTAGE").sort()
+
+print(lista_cloudyPerc, "Cloudy Villapinzón lista")
+
+//////// Funcion para crear un Feature Collection del procentage de la nubosidad
+
+var getCloudScores = function (img){
+  
+  var value = img.get("CLOUDY_PIXEL_PERCENTAGE")
+  
+  return ee.Feature(null, {"nubosidad": value}).set("system:time_start", img.get("system:time_start"))
+
+}
+
+var resultados = ic_s2.map(getCloudScores)
+
+////////////// Gráfico que represente la evolucion temporal de la nubosidad
+
+var grafico = ui.Chart.feature.byFeature(resultados, "system:time_start", "nubosidad")
+
+print(grafico)
+
+//////////////// Nubosidad media de Perth
+
+var meanClouds = resultados.aggregate_mean("nubosidad") 
+
+print("Nubosidad media Villapinzón:", meanClouds)

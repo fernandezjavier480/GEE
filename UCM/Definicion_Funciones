@@ -1,0 +1,67 @@
+//
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                    INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                       ALEXANDER ARIZA     
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                       DEFINICION DE FUNCIONES
+ ===========================================================================================*/
+/*Mapear una función sobre una colección es clave para que Earth Engine funcione. Comience desde
+la sección anterior o al menos las mismas importaciones. Asigne una función simple sobre una lista.
+Use la lista para algo útil (hacer composiciones anuales). Romper cosas.
+● Utilice map() en lugar de bucles for para aplicar una operación a cada 
+elemento de una colección. (Todavía necesita bucles for para algunas cosas 
+del lado del cliente, como las interfaces de usuario).*/
+//===========================================================================================//
+// Dato
+var l8sr = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR"),
+    geometry = /* color: #d63000 */ee.Geometry.Point([-71.60319366547813, 12.09333603101767]);
+    
+    var years = ee.List([2015, 2016, 2017, 2018]);
+print('años:', years);
+
+// Asigna una función sobre la lista para convertir números en fechas.
+
+var dates = years.map(function(y) {
+  return ee.Date.fromYMD({
+    year: y, 
+    month: 1, 
+    day: 1
+  });
+});
+print('fechas', dates);
+
+//Usa la lista de años para algo más interesante 
+//Convierte la lista de años en una ImageCollection. 
+var composites = ee.ImageCollection.fromImages(years.map(function(y) {
+  var annual = l8sr.filter(ee.Filter.calendarRange({
+    start: y,
+    field: 'year'
+  }));
+  return annual.median().set('year', y);
+}));
+
+/*
+// Romper cosas. Debes corregirlos o comentarlos para seguir adelante.
+var badMap = years.map(function(y) {
+  var badAdd = y.add(1); // Error!
+  return badAdd;
+});
+*/
+
+//Solución:
+/*○ Las funciones asignadas no necesariamente saben qué hay en la colección 
+sobre la que se asignan. La solución es lanzar el argumento a la función, 
+es decir ee.Number (y) .add (1);  */
+
+var badMap = years.map(function(y) {
+  var badAdd = ee.Number(y).add(1); // Error!
+  return badAdd;
+});
+print(badMap)

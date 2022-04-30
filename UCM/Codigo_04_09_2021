@@ -1,0 +1,55 @@
+//Clase PDI II - 04/09/2021 Nicolás Herrera Vargas
+/*===========================================================================================
+               PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                           INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                             ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en la gestión integral de los incendios forestales en Latinoamérica.
+ ===========================================================================================
+  Script:                          Introduccion a Javascript
+ ===========================================================================================*/
+ 
+//Lo primero que se hace en cualquier lenguaje de programación:
+print("Código de programación - Nicolás Herrera ");
+// Los comentarios de línea comienzan con dos barras diagonales (//). Como esta línea.
+
+/* Los comentarios de varias líneas comienzan con una barra inclinada y una estrella,
+y terminar con una estrella y una barra inclinada hacia adelante. */
+
+//Las variables se utilizan para almacenar objetos y se definen mediante la palabara clave var.
+var la_respuesta=42; 
+
+//Los objetos de cadena comienzan y terminan con una comilla simple.
+var mi_variable="Soy un string";
+
+//Las declaraciones deben terminar en punto y coma, o de lo contrario el editor se queja.
+var test="Me siento incompleto";
+
+//Los párentesis se utilizan para pasar parámetros a funciones.
+print("Este string se imprimirá en la pestaña de consola.");
+
+//Los corchetes se utilizan para seleccionar elementos dentro de una lista.
+//Recuerde, el índice cero se refiere al primer elemento de la lista.
+var mi_lista =['berenjena', 'manzana', 'trigo'];
+print(mi_lista);
+print(mi_lista[2]);
+
+//Se pueden usar llaves o {brackets} para definir diccionarios (pares clave: valor)
+var mi_diccionario= {"comida":"pan","color":"rojo","numero":la_respuesta};
+
+//Los corchetes se pueden utilizar para aceeder a los elementos del diccionario por clave.
+print(mi_diccionario["numero"]);
+
+//o puede usar la notación de puntos para obtener el mismo resultado.
+print(mi_diccionario.comida)
+
+//Laas funciones se pueden definir como una forma de reutilizar el código y facilitar su lectura 
+var mi_funcion_hola = function(string) {
+  return 'Hola ' + string + '!';
+};
+
+print(mi_funcion_hola('mundo'));

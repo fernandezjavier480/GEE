@@ -1,0 +1,47 @@
+//// Have a quick look at some widgets.
+//// firs we will have a look at the select widgets
+
+var select = ui.Select(
+  {items: ["A","B","C"],    //// List of items (client-side list)
+  placeholder:"Select a value",   //// Defines the first represented value within the drop-down box
+  //value:"A", // Defines the first represented value within the drop-down box
+  onChange: PrintLetter, // function when the user selects the item, a function will be called.
+  });
+  
+  function PrintLetter(passedLetter){
+  
+  print("User Clicked:", passedLetter);
+  }
+  
+  //print(select);
+  
+  var panel = ui.Panel({ /// I define the panel as an ui.Object.
+    style: {width: "250px"},
+  });
+  
+  /// I can add my sleect dropdown box into my panel
+  
+  panel.add(select);
+  
+  // I can add the panel into the map in 2 different ways:
+  
+  //Map.add(panel)   
+  
+  /// or
+  
+ ui.root.add(panel);
+ 
+
+///We can also define a different style for the cursor to indicate that we are pointing out 
+///something within the map otherwise the "hand cursor" is a bit confusing. 
+  Map.style().set("cursor","crosshair")
+  
+ 
+ Map.onClick(PrintLocation);
+ 
+ function PrintLocation(coords){
+   print(coords)
+   Map.unlisten();// disables the option to click in other areas and get new coordinates
+ }
+ 
+

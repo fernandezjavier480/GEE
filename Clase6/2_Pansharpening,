@@ -1,0 +1,47 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var l8 = ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA"),
+    geometry = 
+    /* color: #00ffff */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.84651068618707, -31.935236097955983],
+          [115.84651068618707, -31.98489949465133],
+          [115.91792181899957, -31.98489949465133],
+          [115.91792181899957, -31.935236097955983]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+////////// Upload the collection
+
+
+var Landsat8_TOA = l8.filterDate("2019-01-01", "2019-12-31").filterMetadata("CLOUD_COVER", "less_than", 20).mean()
+
+Map.addLayer(Landsat8_TOA.clip(geometry), {min:0, max:0.3, bands:["B4", "B3", "B2"]}, "RGB original")
+
+/////////// Definir una composicion
+
+var RGBcomposition = ["B4", "B3", "B2"]
+
+/////////// Convertir imagen al espacio de color HSV
+
+var RGBtoHSV = Landsat8_TOA.select(RGBcomposition).rgbToHsv()
+
+print(RGBtoHSV, "HSV")
+
+Map.addLayer(RGBtoHSV.clip(geometry), {min:0, max:0.3, bands:["hue", "saturation", "value"]}, "HSV original")
+
+//////////////////////////// PANSHARPENING WORKFLOW
+
+/// From HSV to RGB
+
+var Pansharpened = ee.Image.cat([
+  RGBtoHSV.select("hue"),
+  RGBtoHSV.select("saturation"),
+  Landsat8_TOA.select("B8")   //// Banda pancromatica (15m)
+  ]).hsvToRgb()
+  
+  
+Map.addLayer(Pansharpened.clip(geometry), {min:0, max:0.3, bands:["red", "green", "blue"]}, "RGB pansharpened")

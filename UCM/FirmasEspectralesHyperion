@@ -1,0 +1,148 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var p1 = /* color: #0344d6 */ee.Feature(
+        ee.Geometry.Point([-71.95087576687085, 1.297907343383143]),
+        {
+          "label": "Agua (madre vieja)",
+          "system:index": "0"
+        }),
+    p2 = /* color: #5ee9ff */ee.Feature(
+        ee.Geometry.Point([-71.96254874050366, 1.3035707090888549]),
+        {
+          "label": "rio con sedimento",
+          "system:index": "0"
+        }),
+    p3 = /* color: #198b04 */ee.Feature(
+        ee.Geometry.Point([-71.9726767617439, 1.2910426406806115]),
+        {
+          "label": "vegetacion",
+          "system:index": "0"
+        }),
+    p4 = /* color: #d3d60a */ee.Feature(
+        ee.Geometry.Point([-71.9402658905538, 1.294169760212165]),
+        {
+          "label": "suelo",
+          "system:index": "0"
+        });
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                       INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                         ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:    OBTENCION DE FIRMAS ESPECTRALES SOBRE IMAGENES HYPERION EN EL RIO VAUPES
+ ===========================================================================================*/
+//Datos de entrada
+var dataset = ee.ImageCollection('EO1/HYPERION')
+                  .filter(ee.Filter.date('2001-05-01', '2017-03-01'))
+                  .filterBounds(ee.Geometry.Point(-71.96024963033398,1.257737236306721));
+var rgb = dataset.select(['B050', 'B023', 'B015']);
+var rgbVis = {
+  min: 1000.0,
+  max: 14000.0,
+  gamma: 2.5,
+};
+Map.setCenter(-74.012, 4.707, 9);
+Map.addLayer(rgb.median(), rgbVis, '(rgb:50/23/15)');
+
+var aoi = ee.Geometry.Point([-71.96024963033398, 1.257737236306721]);
+
+print(dataset)
+
+var irradiances = [1650.52,1714.9,1994.52,2034.72,1970.12,2036.22,1860.24,1953.29,1953.55,1804.56,1905.51,1877.5,1883.51,1821.99,1841.92,1847.51,1779.99,1761.45,1740.8,1708.88,1672.09,1632.83,1591.92,1557.66,1525.41,1470.93,1450.37,1393.18,1372.75,1235.63,1266.13,1279.02,1265.22,1235.37,1202.29,1194.08,1143.6,1128.16,1108.48,1068.5,1039.7,1023.84,938.96,949.97,949.74,929.54,917.32,892.69,877.59,834.6,876.1,839.34,841.54,810.2,802.22,784.44,772.22,758.6,743.88,721.76,714.26,698.69,682.41,669.61,657.86,643.48,623.13,603.89,582.63,579.58,571.8,562.3,551.4,540.52,534.17,519.74,511.29,497.28,492.82,479.41,479.56,469.01,461.6,451,444.06,435.25,429.29,415.69,412.87,405.4,396.94,391.94,386.79,380.65,370.96,365.57,358.42,355.18,349.04,342.1,336,325.94,325.71,318.27,312.12,308.08,300.52,292.27,293.28,282.14,285.6,280.41,275.87,271.97,265.73,260.2,251.62,244.11,247.83,242.85,238.15,239.29,227.38,226.69,225.48,218.69,209.07,210.62,206.98,201.59,198.09,191.77,184.02,184.91,182.75,180.09,175.18,173,168.87,165.19,156.3,159.01,155.22,152.62,149.14,141.63,139.43,139.22,137.97,136.73,133.96,130.29,124.5,124.75,123.92,121.95,118.96,117.78,115.56,114.52,111.65,109.21,107.69,106.13,103.7,102.42,100.42,98.27,97.37,95.44,93.55,92.35,90.93,89.37,84.64,85.47,84.49,83.43,81.62,80.67,79.32,78.11,76.69,75.35,74.15,73.25,71.67,70.13,69.52,68.28,66.39,65.76,65.23,63.09,62.9,61.68,60,59.94]
+var image = ee.Image("EO1/HYPERION/EO1H0060592002362110PZ_SGS_01");
+
+
+// Visualizacion de bandas en el VNIR y SWIR
+/***_
+ * EO-1, Hyperion, compute radiance (rescale) 
+ * 
+ * VNIR bands (B008-B057 (426.82nm - 925.41nm): L = Digital Number / 40
+ * SWIR bands (B077-B224 (912.45nm - 2395.50nm): L = Digital Number / 80
+ * 
+ */
+var kVNIR = ee.List.repeat(40, 57-8+1)
+var kSWIR = ee.List.repeat(80, 224-77+1)
+var k = kVNIR.cat(kSWIR)
+  
+var radiance = image.toFloat().divide(ee.Image.constant(k).rename(image.bandNames()))
+
+
+/***
+ * EO-1, Hyperion, convertir las radiancias en reflectancias
+ */
+
+// calcular el día del año a partir del sello de tiempo
+var date = ee.Date(image.get('system:time_start'));
+var jan01 = ee.Date.fromYMD(date.get('year'), 1, 1);
+var doy = date.difference(jan01,'day').add(1);
+
+// Distancia Tierra-Sol al cuadrado (d2) 
+// http://physics.stackexchange.com/questions/177949/earth-sun-distance-on-a-given-day-of-the-year
+var d = ee.Number(doy).subtract(4).multiply(0.017202).cos().multiply(-0.01672).add(1) 
+    
+var d2 = d.multiply(d)  
+    
+// irradiación solar exoatmosférica media (ESUN)
+// https://eo1.usgs.gov/faq/question?id=21
+var ESUN = irradiances
+    
+// coseno del ángulo cenital solar (cosz)
+var solar_z = ee.Number(ee.Number(90).subtract(image.get('SUN_ELEVATION')))
+var cosz = solar_z.multiply(Math.PI).divide(180).cos()
+
+// calcular la reflectancia
+var scalarFactors = ee.Number(Math.PI).multiply(d2).divide(cosz)
+var scalarApplied = ee.Image(radiance).toFloat().multiply(scalarFactors)
+var reflectance = scalarApplied.divide(ESUN)
+
+var viz = {bands: ['B032', 'B019', 'B012'],min:0, max:0.3}
+Map.addLayer(reflectance,viz,"image visble (rgb:32/19/12)")
+Map.centerObject(image,10)
+
+var wavelengths = [426.8200, 436.9900, 447.1700, 457.3400, 467.5200, 477.6900, 487.8700, 498.0400, 508.2200, 518.3900, 528.5700, 538.7400, 548.9200, 559.0900, 569.2700, 579.4500, 589.6200, 599.8000, 609.9700, 620.1500, 630.3200, 640.5000, 650.6700, 660.8500, 671.0200, 681.2000, 691.3700, 701.5500, 711.7200, 721.9000, 732.0700, 742.2500, 752.4300, 762.6000, 772.7800, 782.9500, 793.1300, 803.3000, 813.4800, 823.6500, 833.8300, 844.0000, 854.1800, 864.3500, 874.5300, 884.7000, 894.8800, 905.0500, 915.2300, 925.4100, 912.4500, 922.5400, 932.6400, 942.7300, 952.8200, 962.9100, 972.9900, 983.0800, 993.1700, 1003.300,1013.300, 1023.400,1033.490,1043.590, 1053.690, 1063.790, 1073.890, 1083.990, 1094.090, 1104.190, 1114.190, 1124.280,1134.3800, 1144.4800, 1154.5800, 1164.6800, 1174.7700, 1184.8700, 1194.9700, 1205.0700, 1215.1700, 1225.1700, 1235.2700, 1245.3600, 1255.4600, 1265.5600, 1275.6600, 1285.7600, 1295.8600, 1305.9600, 1316.0500, 1326.0500, 1336.1500, 1346.2500, 1356.3500, 1366.4500, 1376.5500, 1386.6500, 1396.7400, 1406.8400, 1416.9400, 1426.9400, 1437.0400, 1447.1400, 1457.2300, 1467.3300, 1477.4300, 1487.5300, 1497.6300, 1507.7300, 1517.8300, 1527.9200, 1537.9200, 1548.0200, 1558.1200, 1568.2200, 1578.3200, 1588.4200, 1598.5100, 1608.6100, 1618.7100, 1628.8100, 1638.8100, 1648.9000, 1659.0000, 1669.1000, 1679.2000, 1689.3000, 1699.4000, 1709.5000, 1719.6000, 1729.7000, 1739.7000, 1749.7900, 1759.8900, 1769.9900, 1780.0900, 1790.1900, 1800.2900, 1810.3800, 1820.4800, 1830.5800, 1840.5800, 1850.6800, 1860.7800, 1870.8700, 1880.9800, 1891.0700, 1901.1700, 1911.2700, 1921.3700, 1931.4700, 1941.5700, 1951.5700, 1961.6600, 1971.7600, 1981.8600, 1991.9600, 2002.0600, 2012.1500, 2022.2500, 2032.3500, 2042.4500, 2052.4500, 2062.5500, 2072.6500, 2082.7500, 2092.8400, 2102.9400, 2113.0400, 2123.1400, 2133.2400, 2143.3400, 2153.3400, 2163.4300, 2173.5300, 2183.6300, 2193.7300, 2203.8300, 2213.9300, 2224.0300, 2234.1200, 2244.2200, 2254.2200, 2264.3200, 2274.4200, 2284.5200, 2294.6100, 2304.7100, 2314.8100, 2324.9100, 2335.0100, 2345.1100, 2355.2100, 2365.2000, 2375.3000, 2385.4000, 2395.5000]
+
+
+// Definir y mostrar una FeatureCollection de tres lugares conocidos.
+var points = ee.FeatureCollection([
+  p1,p2,p3,p4
+]);
+
+var viz = {bands: ['B032', 'B019', 'B012'],min:0, max:0.3}
+
+
+Map.addLayer(reflectance,viz,"image visible")
+Map.centerObject(image,10)
+Map.addLayer(points)
+
+// Definir las opciones de personalización.
+var options = {
+  title: 'Hyperion spectra at three points',
+  hAxis: {title: 'Wavelength (nanometers)'},
+  vAxis: {title: 'Reflectance'},
+  lineWidth: 2,
+  pointSize: 0,
+  series: {
+    0: {color: '0000FF'}, 
+    1: {color: 'FF0000'}, 
+    2: {color: '00FF00'}, 
+}};
+
+// Crear el gráfico y establecer las opciones.
+var spectraChart = ui.Chart.image.regions(
+    reflectance, points, ee.Reducer.mean(), 30, 'label', wavelengths)
+        .setChartType('LineChart')
+        .setOptions(options);
+
+// Mostrar el gráfico.
+print(spectraChart);
+
+var sd = reflectance.spectralDilation('sam');
+Map.addLayer(sd);

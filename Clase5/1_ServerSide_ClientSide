@@ -1,0 +1,46 @@
+/////////// Server side, Client side
+
+var clientSide = ["Italia", "Congo", "Perú"]
+
+var serverSide = ee.List(["Italia", "Congo", "Perú"])
+
+print(clientSide, "clientSide")
+print(serverSide, "serverSide")
+
+///////////// Boton para seleccionar un país (clientSide)
+
+var select = ui.Select({
+  
+  items: clientSide,
+  placeholder: "Titulo boton"
+  
+})
+
+print(select)
+
+///////////// Boton para seleccionar un país (serverSide)
+
+var select = ui.Select({
+  
+  items: serverSide.getInfo(),
+  placeholder: "Titulo boton"
+  
+})
+
+print(select)
+
+///////// Con evaluate() los datos pasan de server side a client side en paralelo
+
+function clientList (thisList){
+  
+  var boton = ui.Select({
+    items: thisList,
+    placeholder: "Titulo"
+  })
+  
+  print(boton)
+  
+}
+
+
+serverSide.evaluate(clientList)

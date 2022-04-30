@@ -1,0 +1,31 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #98ff00 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-111.76352543941218, 33.29706307634777],
+          [-111.76352543941218, 33.241661960332685],
+          [-111.71271367183405, 33.241661960332685],
+          [-111.71271367183405, 33.29706307634777]]], null, false),
+    coleccionImagenes = ee.ImageCollection("SKYSAT/GEN-A/PUBLIC/ORTHO/MULTISPECTRAL");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var areainteres=geometry;
+var mediana=coleccionImagenes.median();
+Map.addLayer (coleccionImagenes,{
+  max:5000.0,
+  min:0.0,
+  gamma:1.0,
+  bands:['N','R','G']},
+  'Imagenes disponibles');
+var cortada=mediana.clipTocoleccionImagenes(areainteres);
+Map.addLayer(imagencortada,{
+  max:5000.0,
+  min:0.0,
+  gamma:1.0,
+  bands:['N','R','G']},
+  'Imagen cortada AI',false);
+//Map.centerObject(areainteres);

@@ -1,0 +1,68 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var CHIRPS = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY"),
+    geometry = /* color: #ffc82d */ee.Geometry.Point([2.0965827994721042, 41.397923616133085]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+    
+    //////// Study Area
+
+var region = geometry
+
+///// Cargar la coleccion
+
+var collection = CHIRPS.filterDate("2019-01-01","2019-12-31").filterBounds(geometry)
+
+var mean = collection.mean()
+
+Map.addLayer(mean, {min:1, max:5, palette:["red", "green", "blue"]}, "Rainfall (2019)")
+
+////////////////////////// Variable tiempo inicio
+
+var time0 = collection.first().get("system:time_start")
+
+print(time0)
+
+//////////// Creamos una imagen con valores 0 (ee.Image(0)) para empezar la iteracion
+
+var first = ee.List([ee.Image(0).set("system:time_start", time0).select([0], ["precipitation"])])
+
+///////////// Crear funcion para iteración
+
+
+var accumulate = function (image, list){
+  
+  var previous = ee.Image(ee.List(list).get(-1))
+  
+  var added = image.add(previous).set("system:time_start", image.get("system:time_start"))
+  
+  return ee.List(list).add(added)
+}
+
+
+///////// Iterar nuestra colección
+
+var cumulative = ee.ImageCollection(ee.List(collection.iterate(accumulate,first)))
+
+Map.addLayer(cumulative.first(), {}, false)
+
+////////////// Gráfico precipitación acumulada
+
+var chart = ui.Chart.image.series(cumulative, region, ee.Reducer.mean(), 5000)
+
+print(chart, "Precipitacion acumulada")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,52 @@
+
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                    INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                             ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                 Funciones - Computando el NDVI
+ ===========================================================================================*/
+/*Empiece de nuevo abriendo una nueva pestaña. Busque imágenes, encuéntrelas y visualícelas, 
+con parámetros de visualización cada vez más detallados..*/
+//===========================================================================================//
+// damos color al punto
+/******************************************************************************************* */
+
+//DATOS:
+var l8sr = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR");
+var geometry = ee.Geometry.Point([-73.0994, 11.1018]);
+
+// Obtenga las imágenes con huellas que se cruzan con el punto.
+var spatialFiltered = l8sr.filterBounds(geometry);
+print(spatialFiltered);
+
+// Obtenga una única imagen de prueba.
+var testImage = spatialFiltered.first();
+print(testImage);
+
+// Defina una función que agregará una banda NDVI a una imagen Landsat 8.
+var addNDVI = function(image) {
+  var ndvi = image.normalizedDifference(['B5', 'B4']).rename('NDVI');
+  return image.addBands(ndvi);
+};
+
+// Prueba la función. Al hacerlo de esta manera, puede tener
+// sentencias print() en la función (porque no es map() ed).
+var ndviVisParams= {bands:"NDVI",min:-1,max:1,palette:['red', 'green']};
+Map.addLayer (addNDVI(testImage),ndviVisParams,"Test NDVI");
+
+//Si la función funciona, elimine las declaraciones print () de ella.
+//Ahora mapea la función sobre toda la colección.
+var withNDVI= l8sr.map (addNDVI);
+
+//Verifica que todas las imágenes de la colección tengan NDVI
+Map.addLayer (withNDVI.select("NDVI"),ndviVisParams,"l8sr with NDVI");
+
+print(addNDVI)
+  

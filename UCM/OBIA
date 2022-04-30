@@ -1,0 +1,231 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #0b4a8b */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-119.13987417197197, 34.239407389486125],
+          [-119.13719196295708, 34.24210366277801],
+          [-119.14022822356193, 34.244187893802575],
+          [-119.14287824606865, 34.241473948784886]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+/*==========================================================================================
+                PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                           INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                             ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:       Aplicaciones Inteligencia Artificial y Machine Learning para el PDI  
+                      OBIA -  CLASIFICACIÓN BASADA EN OBJETOS
+ ===========================================================================================*/
+ //CASO 1:   AGRICULTURA DE PRESICIÓN EN CULTIVOS FRUTALES SOBRE IMAGENES AEROTRANSPORTADAS: 
+ //                            * IDENTIFICACIÓN DE INDIVIDUOS PRODUTIVOS A PARTIR DE IV
+ //                            * LOCALIZACIÓN DE ARBOLES SUPERPUESTOS PARA PODAS
+ //===========================================================================================
+ // DATASET: El Programa Nacional de Imágenes Agrícolas (NAIP) adquiere imágenes aéreas (50 cm)
+ //           durante las temporadas de cultivo agrícola en los Estados Unidos.
+ //===========================================================================================
+ // Área de estudio:  Granjas frutales de Oxnard - California EE. UU.
+//===========================================================================================
+////////////////////////////////   DATOS DE ENTRADA   ////////////////////////////////////////
+//===========================================================================================
+// 1. Localice un punto central sobre el área de interes y realice un buffer de 1 km:
+var point = ee.Geometry.Point(-119.140119, 34.241737);
+var aoi = point.buffer(1000);
+
+//*************************************************************************
+// 2. Declare una variable para incorporar el dataset del Programa Nacional de Imágenes Agrícolas (NAIP):   
+var dataset = ee.ImageCollection('USDA/NAIP/DOQQ')
+                  .filter(ee.Filter.date('2017-01-01', '2020-12-31'));
+var falseColor = dataset.select(['N', 'G', 'B']);
+var trueColor = dataset.select(['R', 'G', 'B']);
+var  ColorVis = {
+  min: 0.0,
+  max: 255.0,
+};
+// NOTA: Puede utilizar sus propias imágenes de DRONE subidas en Assets o imágenes de Alta resolución:
+// Ejemplo con PlanetScope: var dataset = ee.ImageCollection('SKYSAT/GEN-A/PUBLIC/ORTHO/MULTISPECTRAL');
+
+// Muestre y centre las combinaciones de la imagen sobre el mapa:
+Map.setCenter(-119.140119, 34.241737, 17);
+Map.addLayer(trueColor,  ColorVis, 'RGB');
+Map.addLayer(falseColor,  ColorVis, 'Falso Color', false);
+//=============================================================================================
+///////////////////////////////////   METODOLOGÍA   ///////////////////////////////////////////
+//*************************************************************************
+// 3. Calcule el índice de vegetación normalizado (NDVI).
+// Defina una función que agregará una banda NDVI a una imágen del NAIP o DRONE.
+var addNDVI = function(image) {
+  var ndvi = image.normalizedDifference(['N', 'R']).rename('NDVI');
+  return image.addBands(ndvi);
+};
+
+// Asigne mediante la función la banda NDVI a toda la colección.
+var withNDVI = dataset.map(addNDVI);
+
+var ndviVisParams = {
+  bands: 'NDVI', 
+  min: -1, 
+  max: 1, 
+  palette: ['white', 'orange', 'green']
+};
+
+//*************************************************************************
+// 4. Realice una reducción a la coleccion y genere el mapa:
+var median = withNDVI.mean();
+Map.addLayer(median.clip(aoi), ndviVisParams, 'Imágen con NDVI2');
+
+//*************************************************************************
+// 5. Defina un umbral sobre la banda NDVI para establecer los píxeles vigorosos por encima de 0.3:
+var hotspots = ((median.select('NDVI')).gt(0.38))
+                .and((median.select('NDVI')).lt(0.55))
+
+//*************************************************************************                
+// 6. Enmascara los píxeles de vegetación debil o no fotosintetica (value 0).
+  .selfMask()
+  .rename('hotspots')
+  .clip(geometry);
+
+//*************************************************************************
+// 7. Muestre los puntos de vigor vegetal sobre el mapa.
+Map.addLayer(hotspots, {palette: 'FF0000'}, 'Hotspots', false);
+Map.addLayer(hotspots.clip(geometry), {palette: '#98ff00'}, 'Naranjos en vigor');
+
+//*************************************************************************
+// 8. Realice el etiquetado:
+// Etiquetar de forma exclusiva los objetos de imágen NDVI.
+/* El etiquetado encuentra componentes conectados con el mismo valor de la primera banda de la entrada 
+y los etiqueta con un valor único global. La conectividad está especificada por el kernel dado. 
+Los objetos más grandes que maxSize se consideran de fondo y están enmascarados. El tamaño max de los 
+objetos conectados sera de 16pix +/- 4 m^2 (equivalente a un dosel superior de arbol naranja) */
+
+var objectId = hotspots.connectedComponents({
+  connectedness: ee.Kernel.plus(1),
+  maxSize: 16
+});
+
+//*************************************************************************
+// 9. Muestra los objetos identificados de forma única en el mapa (con un color por cada objeto).
+Map.addLayer(objectId.randomVisualizer(), null, 'Segmentación por Objetos');
+
+//*************************************************************************
+// 10. Calcular el número de píxeles en cada objeto definido por la banda de "etiquetas".
+var objectSize = objectId.select('labels')
+  .connectedPixelCount({
+    maxSize: 16, eightConnected: false
+  });
+
+//*************************************************************************  
+// 11. Muestra el recuento de píxeles del objeto en el mapa.
+Map.addLayer(objectSize, null, 'Objetos x Nª pixels');
+
+//*************************************************************************
+// 12. Obtenga una imagen de área de píxeles.
+var pixelArea = ee.Image.pixelArea();
+
+//*************************************************************************
+// 13. Calcule Áreas:
+// Multiplica el área de píxeles por el número de píxeles de un objeto para calcular
+// el área del objeto. El resultado es una imagen donde cada píxel
+// de un objeto relaciona el área del objeto en m ^ 2.
+var objectArea = objectSize.multiply(pixelArea);
+
+//*************************************************************************
+// 14. Mostrar el área del objeto en el mapa.
+Map.addLayer(objectArea, null, 'Área por objeto (m^2)');
+
+//*************************************************************************
+// 15. Defina un nuevo umbral de la imagen `objectArea` para crear una máscara que enmascara
+// los objetos por debajo de un tamaño determinado (4 m^2 en este caso). 
+// El objetivo es localizar aquellos arboles con copas superpuestas que commpiten por luz solar.
+var areaMask = objectArea.gte(4);
+
+//*************************************************************************
+// 16. Actualice la máscara de la capa `objectId` definida previamente usando la
+// máscara de área mínima recién definida:
+objectId = objectId.updateMask(areaMask);
+
+//*************************************************************************
+// 17. Mostrar el área del objetos grandes o arboles con deseles superpuetos:
+Map.addLayer(objectId, null, 'Doseles sin FOCV superpuesta');
+
+//*************************************************************************
+// 18. Haz una imágen adecuada para `reduceConnectedComponents ()` agregando una etiqueta
+// banda a la imagen de NDVI `OBIA`. (opcional)
+var OBIA = median.addBands(objectId.select('labels'));
+
+// 19. Calcula el NDVI medio por objeto definido por el agregado previamente
+// banda de "etiquetas". (opcional)
+var patchTemp = OBIA.reduceConnectedComponents({
+  reducer: ee.Reducer.mean(),
+  labelBand: 'labels'
+});
+
+//*************************************************************************
+// 20. Convierta las zonas del NDVI umbral en vectores.
+var classes = ee.List([areaMask])
+  .map(function(n) {
+    var classImage = areaMask;
+    var vectors = classImage.updateMask(classImage)
+      .reduceToVectors({
+        reducer: ee.Reducer.countEvery(), 
+        geometry: aoi, 
+        scale: 1,
+        maxPixels: 1e8})
+      .geometry();
+    return ee.Feature(vectors, {"class": n,"size":vectors.area(1)});
+  });
+
+var result = ee.FeatureCollection(classes);
+print(result)
+//===================================================================================================
+///////////////////////////////////////   RESULTADOS   //////////////////////////////////////////////
+//*************************************************************************
+// 21. Crea una imagen vacía convertida a byte, en la que incluiremos el límite municipal:
+var vacia = ee.Image().byte()
+
+// Definimos una variable para pintar los bordes del polígono del municipio, selecccionando
+// los atributos de color, grosor de la línea:
+var poli = vacia.paint({
+  'featureCollection': result,
+  'color': 1,
+  'width': 1.5
+});
+// Mediante la funcion "Map.addLayer", generamos el poligono de area de estudio en el mapa:
+Map.addLayer(poli, {'palette': 'FF0000'}, 'Arboles con poda');
+
+//*************************************************************************
+//  22. Crea una imágen vacía convertida a byte, en la que incluiremos el límite del área de interes:
+var vacia = ee.Image().byte();
+// Definimos una variable para pintar los bordes del polígono del municipio, selecccionando
+// los atributos de color, grosor de la línea:
+var linea = vacia.paint({
+  'featureCollection': geometry,
+  'color': 1,
+  'width': 1.5
+});
+// Mediante la funcion "Map.addLayer", generamos el poligono de area de estudio en el mapa:
+Map.addLayer(linea, {'palette': 'FF0000'}, 'AOI');
+
+//*************************************************************************
+// 23. Exportar una tabla de fecha .csv, media NDVI para la plantacion
+Export.table.toDrive({
+  collection: result,
+  description: 'Imagen_NDVI_stats',
+  folder: 'GEE_NDVI',
+  fileFormat: 'KMZ'
+});
+
+//*************************************************************************
+// 24. Exportar una tabla de fecha .csv, media NDVI para la plantacion
+Export.table.toDrive({
+  collection: result,
+  description: 'Tabla_NDVI_stats',
+  folder: 'GEE_NDVI',
+  fileFormat: 'CSV'
+});
+//////////////////////////////////////////////////////////////////////////////////////////////////////

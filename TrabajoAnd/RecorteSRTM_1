@@ -1,0 +1,60 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var image = ee.Image("USGS/SRTMGL1_003"),
+    image2 = ee.Image("CGIAR/SRTM90_V4"),
+    table3 = ee.FeatureCollection("users/fernandezjavier480/Caqueza"),
+    table = ee.FeatureCollection("users/fernandezjavier480/deptos");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+
+
+// Load a FeatureCollection from a table dataset
+ var fc = ee.FeatureCollection(table);
+
+/// 1.  Agregar capa al mapa
+
+ var geometria = fc.geometry()
+
+// Agregar
+
+Map.addLayer(geometria, {}, 'Geometria');
+
+var im_srtm = image.clip( geometria);
+Map.addLayer( im_srtm, {min:1353, max:3293}, 'dem');
+
+
+var hillshade = ee.Terrain.hillshade(im_srtm,45,45)
+Map.addLayer(hillshade, {min:150, max:255},'hillshade')
+print(hillshade)
+
+/// 2.  Agregar capa al mapa
+
+// Map.addLayer(newImg);
+//print(image2.getDownloadURL({scale: 75, region: geometria, name:"SRTM30m1"}));
+//print(image.getDownloadURL({scale: 75, region: geometria, name:"SRTM30m"}));
+
+/// Revisar en tasks
+
+//Export.image.toDrive({
+  //image: image2 ,
+  //description: 'Imagen para el drive',
+  //scale: 30,
+  //maxPixels: 1e9
+//});
+  
+
+//var URLDownload = hillshade.getDownloadURL({
+//'scale': 10,
+//"region": geometria,
+// 'maxPixels': 1e13
+//});
+//print('Link download',URLDownload);
+
+
+Export.image.toDrive({
+    image: im_srtm,
+    description: 'SRTM',
+    scale: 300,
+    region: geometria,
+    maxPixels:1e13
+});
+

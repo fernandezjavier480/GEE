@@ -1,0 +1,73 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var imageCollection = ee.ImageCollection("COPERNICUS/S2_SR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+///// Localizacion
+
+Map.setCenter(-95.8466, 40.6851, 12)
+
+///////////// Imágenes
+
+////// Antes de la inundacion
+
+var Antes_inundacion = imageCollection.filterDate("2019-09-01", "2019-09-10")
+                                      .filterMetadata("CLOUDY_PIXEL_PERCENTAGE", "less_than", 40)
+                                      .median()
+                                  
+
+///// Después de la inundación
+
+var Despues = imageCollection.filterDate("2019-09-12", "2019-09-20")
+                                      .filterMetadata("CLOUDY_PIXEL_PERCENTAGE", "less_than", 40)
+                                      .median()
+                                      
+/////////////////// Normalized Difference Water Index (NDWI) (NIR/SWIR)
+
+var Antes_NDWI = Antes_inundacion.normalizedDifference(["B8", "B11"]).rename("NDWI")
+var Despues_NDWI = Despues.normalizedDifference(["B8", "B11"]).rename("NDWI")
+
+////////////////////////////////////// Presentar Resultados en una interfaz de usuario :)
+
+///// Limpiar la interfaz de usuario actual
+
+ui.root.clear()
+
+/////////////// Creacion de mapas
+
+var map = ui.Map()
+
+map.addLayer(Antes_NDWI, {min:-1, max:0.6, palette:['#0000ff', 'F1B555', '99B718', '66A000', '3E8601', 
+    '056201', '023B01', '011D01', 'blue']}, "Pre-inundacion")
+
+var antes_titulo = ui.Label({value: "PRE-INUNDACION", style:{position: "bottom-left"}})
+
+map.add(antes_titulo)
+
+////////////// Crear el mapa de la inundación
+
+var map2 = ui.Map()
+
+map2.addLayer(Despues_NDWI, {min:-1, max:0.6, palette:['#0000ff', 'F1B555', '99B718', '66A000', '3E8601', 
+    '056201', '023B01', '011D01', 'blue']}, "Post-inundacion")
+
+var despues_titulo = ui.Label({value: "POST-INUNDACION", style:{position: "bottom-right"}})
+
+map2.add(despues_titulo)
+
+map.setCenter(-95.8466, 40.6851, 12)
+map2.setCenter(-95.8466, 40.6851, 12)
+
+////////////// SplitPanel para añadir los dos mapas a un panel dividido en dos
+
+var SWIPE = ui.SplitPanel({
+  firstPanel: map,
+  secondPanel: map2,
+  wipe: true
+})
+
+//////// Añadir SplitPAnels a la raíz de la interfaz de usuario
+
+ui.root.add(SWIPE)
+
+///////// Sincronizar los mapas
+
+ui.Map.Linker([map, map2])

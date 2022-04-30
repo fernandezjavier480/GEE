@@ -1,0 +1,238 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var SpainPort = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-1.783211282462096, 43.35526975825009],
+          [-6.221687844962096, 44.431944861909216],
+          [-9.869148782462096, 43.99096572486606],
+          [-10.704109719962096, 40.74531010188929],
+          [-10.484383157462096, 36.24220064510868],
+          [-7.583992532462096, 35.708751240573335],
+          [-6.045906594962096, 36.029253604332226],
+          [-4.332039407462096, 36.20674961338524],
+          [-2.310555032462096, 35.993706277034356],
+          [-0.46485190746209604, 36.419214607398054],
+          [0.589835592537904, 37.612195791290944],
+          [2.215812155037904, 38.37410083502823],
+          [4.632804342537904, 39.12806681975104],
+          [5.555655905037904, 39.87404727939586],
+          [4.764640280037904, 40.74531010188929],
+          [3.973624655037904, 41.37488025199261],
+          [3.885734030037904, 42.096315637151726],
+          [2.962882467537904, 42.356644990433075],
+          [2.259757467537904, 42.356644990433075],
+          [1.732413717537904, 42.48640697853687],
+          [0.941398092537904, 42.80963656568238],
+          [0.41405434253790396, 42.64823172230051],
+          [-0.20118003246209604, 42.68054628922225],
+          [-0.772469094962096, 42.84186712952675],
+          [-1.255867532462096, 43.06701045823328]]]),
+    Italia = 
+    /* color: #98ff00 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[7.621085592537904, 43.25933470963464],
+          [9.466788717537904, 43.35526975825009],
+          [9.994132467537904, 42.68054628922225],
+          [10.916984030037904, 41.998415433498664],
+          [9.774405905037904, 41.308893612274154],
+          [7.269523092537904, 41.04427873208403],
+          [7.093741842537904, 39.94146626167798],
+          [7.093741842537904, 38.78634229623556],
+          [8.631827780037904, 38.40854462132685],
+          [9.466788717537904, 38.47738296324312],
+          [10.916984030037904, 38.923229839917994],
+          [11.707999655037904, 38.30516405491464],
+          [11.839835592537904, 37.018046423207835],
+          [12.982413717537904, 36.171282516516705],
+          [14.652335592537904, 36.171282516516705],
+          [16.498038717537902, 36.20674961338524],
+          [17.684562155037902, 36.87756503957436],
+          [18.563468405037902, 37.92484056569433],
+          [19.178702780037902, 39.16214859028701],
+          [19.178702780037902, 40.311083692440306],
+          [18.431632467537902, 41.011126728537135],
+          [17.289054342537902, 41.63815789632216],
+          [16.585929342537902, 42.421559553673085],
+          [15.091788717537904, 42.90627784075],
+          [14.388663717537904, 43.57852928027276],
+          [13.333976217537904, 44.526010770267526],
+          [13.290030905037904, 45.05618615980237],
+          [13.685538717537904, 45.827008609794895],
+          [13.641593405037904, 46.2236750431426],
+          [13.509757467537904, 46.557093291496955],
+          [12.718741842537904, 46.79830030550501],
+          [12.103507467537904, 47.03843086970616],
+          [11.048819967537904, 46.8884753826457],
+          [10.433585592537904, 46.64767210355966],
+          [9.906241842537904, 46.37548128832403],
+          [9.378898092537904, 46.40579203384855],
+          [8.851554342537904, 46.04095190643639],
+          [8.280265280037904, 46.162834688509726],
+          [6.917960592537904, 45.76573034981401],
+          [6.830069967537904, 45.24214405985495],
+          [6.830069967537904, 44.40055585965234],
+          [7.796866842537904, 44.18036109199526],
+          [7.489249655037904, 43.73749542584838]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+/////////// Convertir las geometrías en objetos añadiendo propiedades:
+
+var featureSpainPort = ee.Feature(SpainPort).set("nombre", "SpainPort")
+var featureItalia = ee.Feature(Italia).set("nombre", "Italia")
+
+var FC = ee.FeatureCollection([featureSpainPort, featureItalia])
+
+//Map.addLayer(FC)
+Map.centerObject(FC,5)
+
+///////////////// Definir el dataset que vamos a utilizar (Colección de imagenes CHIRPS)
+
+var CHIRPS = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY") 
+
+/////////////////////////////////////////////////////////// Diseñar la interfaz de usuario (UI)
+////////////////// 1. Añadir panel
+///////////////// 2. Añadir botones lista
+///////////////// 3. Añadir boton función
+
+var panel = ui.Panel({
+  style:{width: "400px"}
+})
+
+var panelChart = ui.Panel()
+
+var selDate1 = ui.Select({
+  placeholder: "Selecciona fecha inicio"
+})
+
+var selDate2 = ui.Select({
+  placeholder: "Selecciona fecha final"
+})
+
+var button = ui.Button({
+  label: "Calcula precipitación",
+  onClick: function(){rainfallTotals(selDate1.getValue(), selDate2.getValue())}
+})
+
+//ui.root.add(panel.add(selDate1).add(selDate2).add(button))
+
+//////////////////////////////////////////////////////////// Crear función que genere un listado de fechas diarias. Desde hoy a dos años atras
+
+function getDates(){
+  
+  var todayDate = ee.Date("2020-11-12")
+  var startDate = todayDate.advance(-2, "years")
+  var daysDifference = todayDate.difference(startDate, "day");
+  
+  var listOfDays = ee.List.sequence(1, daysDifference).map(EstimateDate)
+  
+  function EstimateDate (numberOfDays){
+    
+    var currentDate = startDate.advance(numberOfDays, "day").format("yyyy-MM-dd");
+    return currentDate
+    
+  }
+  
+  return listOfDays
+}
+
+var dateList = getDates()
+
+print(dateList)
+
+////////////////////////////////////////////////////////// Función para pasar los datos de un server side a un client side
+
+function clientSide (DateList){
+  selDate1 = ui.Select({
+    items: DateList,
+    placeholder: "Selecciona fecha inicio"
+  })
+  selDate2 = ui.Select({
+    items: DateList,
+    placeholder: "Selecciona fecha final"
+  })
+  
+  ui.root.add(panel.add(selDate1).add(selDate2).add(button).add(panelChart))
+  
+}
+
+var client_side = dateList.evaluate(clientSide)
+
+
+///////////////////////////////////////////////// Crear la función que dará funcionalidad al botón "Calcula precipitación"
+
+function rainfallTotals (fromDate, toDate){
+  Map.clear()
+  panelChart.clear()
+  var rain = CHIRPS.filterDate(fromDate, toDate).sum().rename("Acc_rain")
+  
+  var stats = rain.reduceRegion(ee.Reducer.minMax(), FC, 5000)
+  
+  stats.evaluate(function(thisDictionary){
+    
+    var visible = {min: thisDictionary.Acc_rain_min,
+                  max: thisDictionary.Acc_rain_max,
+                  palette:["red", "orange", "green", "blue"]}
+
+Map.addLayer(rain.clip(FC), visible, "Accumulated rainfall")
+
+/*
+ * Legend setup
+ */
+
+// Creates a color bar thumbnail image for use in legend from the given color
+// palette.
+function makeColorBarParams(palette) {
+  return {
+    bbox: [0, 0, 1, 0.1],
+    dimensions: '100x10',
+    format: 'png',
+    min: 0,
+    max: 1,
+    palette: palette,
+  };
+}
+
+// Create the color bar for the legend.
+var colorBar = ui.Thumbnail({
+  image: ee.Image.pixelLonLat().select(0),
+  params: makeColorBarParams(visible.palette),
+  style: {stretch: 'horizontal', margin: '0px 8px', maxHeight: '24px'},
+});
+
+// Create a panel with three numbers for the legend.
+var legendLabels = ui.Panel({
+  widgets: [
+    ui.Label(visible.min, {margin: '4px 8px'}),
+    ui.Label(
+        ((visible.max + visible.min) / 2),
+        {margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
+    ui.Label(visible.max, {margin: '4px 8px'})
+  ],
+  layout: ui.Panel.Layout.flow('horizontal')
+});
+
+var legendTitle = ui.Label({
+  value: 'Map Legend: Precipitación acumulada',
+  style: {fontWeight: 'bold'}
+});
+
+var legendPanel = ui.Panel([legendTitle, colorBar, legendLabels]);
+Map.add(legendPanel)//.widgets().set(3, legendPanel);
+
+  })
+ 
+  
+  var chart = ui.Chart.image.seriesByRegion({
+    imageCollection: CHIRPS.filterDate(fromDate, toDate),
+    regions: FC,
+    reducer:ee.Reducer.mean(),
+    band: "precipitation",
+    scale:5000,
+    xProperty:"system:time_start",
+    seriesProperty:"nombre" })
+
+panelChart.add(chart)
+
+}

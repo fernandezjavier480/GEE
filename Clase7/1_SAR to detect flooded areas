@@ -1,0 +1,100 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #98ff00 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[8.790356738281266, 45.2189532336857],
+          [8.790356738281266, 44.99214382628111],
+          [9.732434375000016, 44.99214382628111],
+          [9.732434375000016, 45.2189532336857]]], null, false),
+    imageCollection = ee.ImageCollection("COPERNICUS/S1_GRD");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+///// Map location
+
+Map.setCenter(9.1172, 45.079, 10)  //////// Po River, Italy
+
+///// Definir Study Area
+
+
+var region = geometry
+
+///// Cargar colección Sentinel 1 / Imagen Seca / Antes de la inundación
+
+var antes = imageCollection
+                          .filterDate("2019-11-13", "2019-11-14")
+                          .filterBounds(geometry)
+                          .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
+                          .select("VV")
+                          .filterMetadata("resolution_meters", "equals", 10)
+                          .median()
+                          
+///// Cargar colección Sentinel 1 / Imagen húmeda / Después de la inundación
+
+var despues = imageCollection
+                          .filterDate("2019-11-25", "2019-11-27")
+                          .filterBounds(geometry)
+                          .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
+                          .select("VV")
+                          .filterMetadata("resolution_meters", "equals", 10)
+                          .median()
+                          
+Map.addLayer(antes.clip(geometry), {min:-20, max:0}, "Antes de la Inundación")
+Map.addLayer(despues.clip(geometry), {min:-20, max:0}, "Despues de la Inundación")
+
+//////////////////////
+
+/////// cambios en las imagenes
+
+var cambios = despues.subtract(antes)
+
+Map.addLayer(cambios.clip(geometry), {min:-10, max:5, palette:["red", "white", "grey"]}, "Cambios Antes/Despues")
+
+///////////// Reclasificar la imagen
+
+var categorical = ee.Image(1).rename("Class")
+                  .where(cambios.gt(-10), 1)
+                  .where(cambios.lt(-10), 2)
+                  
+Map.addLayer(categorical.clip(geometry), {min:1, max:2})
+
+var inundacion = categorical.updateMask(categorical.select("Class").eq(2))
+
+Map.addLayer(inundacion.clip(geometry))
+
+/////////////// Cálculo del área
+
+var areaInundada = ee.Image.pixelArea().updateMask(inundacion.select("Class")).divide(1e6).reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: region,
+  scale:10,
+  maxPixels:1e13
+})
+
+print("Total Área Inundada:", areaInundada)
+
+////////////// Crear una imagen que será el Verde del RGB
+
+var verde = imageCollection
+                          .filterDate("2019-11-13", "2019-11-27")
+                          .filterBounds(geometry)
+                          .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
+                          .select("VV")
+                          .filterMetadata("resolution_meters", "equals", 10)
+                          .median()
+                          
+//////// Crear RGB
+
+var Red = antes.select("VV").rename("Red")
+var Blue = despues.select("VV").rename("Blue")
+var Green = verde.select("VV").rename("Green")
+
+////// Añadir bandas a una sola imagen
+
+var RGB = Red.addBands(Green).addBands(Blue)
+
+Map.addLayer(RGB.clip(geometry), {min:-20, max:0, bands:["Red", "Green", "Blue"]}, "RGB inundación")

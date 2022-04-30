@@ -1,0 +1,56 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = /* color: #0b4a8b */ee.Geometry.Point([-74.86450674369476, 10.979795452323865]),
+    l8sr = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                    INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                             ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                 Image Collections
+ ===========================================================================================*/
+/*Empiece de nuevo en una nueva pestaña. Busque 'reflectancia de superficie Landsat 8' e 
+importe el conjunto de datos de Nivel 1. A continuación, filtre y ordene de varias formas.*/
+//===========================================================================================//
+
+// buscar esta coleccion l8sr
+// Nombra la importación l8sr.
+// Tenga en cuenta que puede agregarlo al mapa:
+ 
+Map.addLayer(l8sr, {bands: ['B4', 'B3', 'B2'], min: 0, max: 3000}, 'l8sr');
+
+// Esto llama implícitamente a mosaic () para un compuesto de valor reciente.
+// Explore la colección con el inspector.
+
+// Dibuja un solo punto en tu ROI con las herramientas de geometría.
+
+// Obtenga las imágenes con huellas que cruzan el punto.
+var spatialFiltered = l8sr.filterBounds(geometry);
+// ¿Cuántas imágenes hay?
+print('Número de imágenes en el punto', spatialFiltered.size());
+
+// Si hay menos de 5000, puede imprimirlos.
+print('filtrados espacialmente', spatialFiltered);
+
+//Obtener imágenes filtradas por fecha en punto.
+var dateFiltered=spatialFiltered
+.filterDate("2020-01-01","2020-12-31");
+print('dato filtrado a 2020', dateFiltered);
+
+// Ordenar por una propiedad interesante.
+var sorted = dateFiltered.sort('CLOUD_COVER');
+
+// Inspecciona la primera imagen (menos nublada).
+print('imagen menos nublada:', sorted.first());   
+// crea una variable para la primera imagen (menos nublada).
+var sortedfirts = (sorted.first());
+
+// Tenga en cuenta que puede agregarlo al mapa:
+Map.addLayer(sortedfirts, {bands: ['B4', 'B3', 'B2'], min: 0, max: 3000}, 'l8sr menos nubosa');

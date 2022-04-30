@@ -1,0 +1,51 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var l8sr = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR"),
+    geometry = /* color: #d63000 */ee.Geometry.Point([-74.00483078690877, 11.024557514115983]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var addNDVI = function(image) {
+  var ndvi = image.normalizedDifference(['B5', 'B4']).rename('NDVI');
+  return image.addBands(ndvi);
+};
+
+// Asigne la función a toda la colección.
+var withNDVI = l8sr.map(addNDVI);
+
+var ndviVisParams = {
+  bands: 'NDVI', 
+  min: 0, 
+  max: 1, 
+  palette: ['white', 'green']};
+  
+// Aquí hay una reducción implícita, que es mosaic ().
+// Mosaic es solo el último delgado en la parte superior. Si la colección es
+// ordenado cronológicamente, esto da como resultado un compuesto de valor reciente.
+Map.addLayer(withNDVI.select('NDVI'), ndviVisParams, 'l8sr with NDVI',false);
+
+// Toma la mediana en cada banda, en cada píxel.
+var median = withNDVI.median();
+
+var visParams = {bands: ['B4', 'B3', 'B2'], min: 0, max: 3000};
+var visParams2 = {bands: ['B7', 'B4', 'B2'], min: 0, max: 3000};
+Map.addLayer(median, visParams, 'median RGB',false);
+
+Map.addLayer(median, ndviVisParams, 'Mediana del NDVI',false);
+
+//Tenga en cuenta que esto es diferente 
+var medianNDVI=addNDVI(l8sr.median());
+Map.addLayer(medianNDVI,ndviVisParams,"NDVI sobre la mediana del RGB",false);
+
+//Toma el máximo en cada banda, en cada píxel
+var max= withNDVI.max();
+Map.addLayer(max,ndviVisParams,'Maximum NDVI',false);
+
+//Generar el píxel con el máximo NDVI sin RGB
+var qualityMosaic=withNDVI.qualityMosaic("NDVI");
+Map.addLayer(qualityMosaic,ndviVisParams,'greenest pixel composite');
+
+//Generar el píxel con el máximo NDVI con RGB
+var qualityMosaic=withNDVI.qualityMosaic("NDVI");
+Map.addLayer(qualityMosaic,visParams,'greenest pixel composite');
+
+//Generar el píxel con el máximo NDVI con RGB de combinación para realzar la vegetación
+var qualityMosaic=withNDVI.qualityMosaic("NDVI");
+Map.addLayer(qualityMosaic,visParams2,'greenest pixel composite');

@@ -1,0 +1,279 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var s1 = ee.ImageCollection("COPERNICUS/S2"),
+    table = ee.FeatureCollection("users/fernandezjavier480/MunicipiosAnd"),
+    geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-77.45966620913913, 6.935159918854697],
+          [-77.45966620913913, 4.245629325537147],
+          [-76.00947089663913, 4.245629325537147],
+          [-76.00947089663913, 6.935159918854697]]], null, false),
+    sa = ee.ImageCollection("COPERNICUS/S2_SR"),
+    land1 = ee.ImageCollection("LANDSAT/LO08/C01/T1_RT"),
+    clproba = ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+// Load a FeatureCollection from a table dataset
+ var fc = ee.FeatureCollection(table);
+
+/// 1.  Agregar capa al mapa
+
+ var geometria = fc.geometry()
+
+// Agregar
+
+Map.addLayer(geometria, {}, 'Geometria');
+
+
+//Bandas
+var bands = ["B2", "B3", "B4"]
+
+///////////////////////////////77
+//Filtrar imágenes
+
+
+////// Filtrar la colección de imágenes
+
+var filter = s1.filterBounds(geometry)
+
+//print(filter, "s2 Filtro")
+
+var filter2 = filter.filterDate("2017-01-01", "2020-12-31")
+
+
+print(filter2, "s2 filtro fecha")
+
+/////// Filtrar utilizando metadatos
+
+var filter3 = filter2.filterMetadata("SPACECRAFT_NAME", "equals", "Sentinel-2A")
+
+print(filter3, "s2 Filtro por metadatos")
+
+
+//// Filtrar por porcentaje de nubosidad
+
+
+var filterclouds = ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 20)
+
+var filter4 = filter3.filter(filterclouds)
+
+print(filter4, "Filtro por nubosidad")
+
+
+//// Seleccionar la banda 8
+
+//var imagen = filter4.first()
+
+var s2 = ee.ImageCollection(filter4)
+  .select(["B4","B3","B2"])
+  //.limit(15)
+
+print(s2, "Colección de imágenes")
+
+//function addImage(image) { // display each image in collection
+//  var id = image.id
+//  var image = ee.Image(image.id)
+//  Map.addLayer(image, {min:0, max:3500, bands:["B4","B3","B2"]})
+//}
+
+//s2.evaluate(function(s2) {  // use map on client-side
+//  s2.features.map(addImage)
+//})
+
+var mosaico = s2.mosaic()
+
+Map.addLayer(mosaico, {min:0, max:3500, bands:["B4", "B3", "B2"]}, "MOSAICO SENTINEL 1C", false)
+
+var mediana = ee.Reducer.median()
+
+
+var s2_mediana = filter4.reduce(mediana)
+
+Map.addLayer(s2_mediana, {min:0, max:3500, bands:["B4_median", "B3_median", "B2_median"]}, "MOSAICO_SENTINEL 1C_1", true)
+
+
+print(mosaico, "MOSAICO SENTINEL 1C")
+
+
+Export.image.toDrive({
+  image: mosaico,
+  description: 'MOSAICO_SENTINEL_1C',
+  scale: 5,
+  region: geometry,
+  maxPixels:1e13
+});
+
+print(s2_mediana, "MOSAICO SENTINEL 1C_1")
+
+
+Export.image.toDrive({
+  image: s2_mediana,
+  description: 'MOSAICO_SENTINEL_1C_1',
+  scale: 5,
+  region: geometry,
+  maxPixels:1e13
+});
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+///// Sentinel 2A
+
+
+///////////////////////////////77
+//Filtrar imágenes
+
+
+////// Filtrar la colección de imágenes
+
+var filter = sa.filterBounds(geometry)
+
+//print(filter, "s2 Filtro")
+
+var filter2 = filter.filterDate("2017-01-01", "2020-12-31")
+
+
+print(filter2, "s2 filtro fecha")
+
+
+//// Filtrar por porcentaje de nubosidad
+
+
+var filterclouds = ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 25)
+
+var filter4 = filter2.filter(filterclouds)
+
+print(filter4, "Filtro por nubosidad")
+
+
+//// Seleccionar la banda 8
+
+//var imagen = filter4.first()
+
+var s2 = ee.ImageCollection(filter4)
+  .select(["B4","B3","B2"])
+  //.limit(15)
+
+print(s2, "Colección de imágenes")
+
+
+var mosaico1 = s2.mosaic()
+
+Map.addLayer(mosaico1, {min:0, max:3500, bands:["B4", "B3", "B2"]}, "MOSAICO SENTINEL 2A", false)
+
+var mediana = ee.Reducer.median()
+
+
+var s2_mediana1 = filter4.reduce(mediana)
+
+Map.addLayer(s2_mediana1, {min:0, max:3500, bands:["B4_median", "B3_median", "B2_median"]}, "MOSAICO_SENTINEL 2A_1", false)
+
+
+print(mosaico1, "MOSAICO SENTINEL 2A")
+
+
+Export.image.toDrive({
+  image: mosaico1,
+  description: 'MOSAICO_SENTINEL_2A',
+  scale: 5,
+  region: geometry,
+  maxPixels:1e13
+});
+
+print(s2_mediana1, "MOSAICO SENTINEL 2A_1")
+
+
+Export.image.toDrive({
+  image: s2_mediana1,
+  description: 'MOSAICO_SENTINEL_2A_1',
+  scale: 5,
+  region: geometry,
+  maxPixels:1e13
+});
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+///// Landsat8
+
+
+///////////////////////////////77
+//Filtrar imágenes
+
+
+////// Filtrar la colección de imágenes
+
+var filter = land1.filterBounds(geometry)
+
+//print(filter, "s2 Filtro")
+
+var filter2 = filter.filterDate("2017-01-01", "2020-12-31")
+
+
+print(filter2, "s2 filtro fecha")
+
+
+
+//// Seleccionar la banda 8
+
+//var imagen = filter4.first()
+
+var s2 = ee.ImageCollection(filter2)
+  .select(["B4","B3","B2"])
+  //.limit(15)
+
+print(s2, "Colección de imágenes")
+
+
+var mosaico2 = s2.mosaic()
+
+Map.addLayer(mosaico2, {min:0, max:3500, bands:["B4", "B3", "B2"]}, "MOSAICO LANDSAT8", false)
+
+var mediana = ee.Reducer.median()
+
+
+var s2_mediana2 = filter4.reduce(mediana)
+
+Map.addLayer(s2_mediana2, {min:0, max:3500, bands:["B4_median", "B3_median", "B2_median"]}, "MOSAICO_LANDSAT_8_1", false)
+
+
+print(s2_mediana2, "MOSAICO LANDSAT_8_1")
+
+
+Export.image.toDrive({
+  image: s2_mediana2,
+  description: 'MOSAICO_LANDSAT_8_1',
+  scale: 5,
+  region: geometry,
+  maxPixels:1e13
+});
+
+
+
+print(mosaico2, "MOSAICO LANDSAT_8")
+
+
+Export.image.toDrive({
+  image: mosaico2,
+  description: 'MOSAICO_LANDSAT_8',
+  scale: 5,
+  region: geometry,
+  maxPixels:1e13
+});
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+

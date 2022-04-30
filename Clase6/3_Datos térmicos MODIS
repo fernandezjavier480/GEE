@@ -1,0 +1,153 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-82.40379622064677, -1.6907879543147115],
+          [-83.42168035972219, -3.1180685276355273],
+          [-83.13162897316441, -3.7106950668261995],
+          [-83.80083257138872, -6.809829530769432],
+          [-82.04109328461432, -6.591662385187775],
+          [-80.95876958778075, -6.9425180206829005],
+          [-79.357380864825, -7.74003543629947],
+          [-69.83388946600508, -16.185107613059763],
+          [-59.62198675339845, -11.675243092925687],
+          [-53.641213630374, -6.573662153079602],
+          [-51.02150889319361, -2.4134339989797775],
+          [-54.41944652778894, 4.677488085817189],
+          [-64.26642622377686, 10.624079065713977],
+          [-75.46246540062936, 3.855070778638083],
+          [-80.33785455605228, 2.277913524647501],
+          [-81.95390014736698, -0.1755078677155405]]]),
+    MODIS_fireMask = ee.ImageCollection("MODIS/006/MOD14A1"),
+    MODIS_LST = ee.ImageCollection("MODIS/006/MOD11A1"),
+    north = 
+    /* color: #98ff00 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Feature(
+        ee.Geometry.Polygon(
+            [[[-73.01558195972098, 4.831842970951055],
+              [-73.01558195972098, 0.3661423301274434],
+              [-58.49165617847097, 0.3661423301274434],
+              [-58.49165617847097, 4.831842970951055]]], null, false),
+        {
+          "class": "north",
+          "system:index": "0"
+        }),
+    central = 
+    /* color: #0b4a8b */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Feature(
+        ee.Geometry.Polygon(
+            [[[-77.4265927019085, -0.51275458333096],
+              [-77.4265927019085, -5.399162163540206],
+              [-54.83870207690851, -5.399162163540206],
+              [-54.83870207690851, -0.51275458333096]]], null, false),
+        {
+          "class": "central",
+          "system:index": "0"
+        }),
+    south = 
+    /* color: #ffc82d */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Feature(
+        ee.Geometry.Polygon(
+            [[[-74.89424406909598, -6.344482518999974],
+              [-74.89424406909598, -12.583222836035539],
+              [-62.14461028003347, -12.583222836035539],
+              [-62.14461028003347, -6.344482518999974]]], null, false),
+        {
+          "class": "south",
+          "system:index": "0"
+        });
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+var region = geometry
+
+///////////////////// Fire Mask (MODIS)
+
+var ic_fire = MODIS_fireMask.filterDate("2018-06-01", "2019-06-01").select("FireMask")
+
+/////////////////// Land Surface Temperature (LST) de MODIS
+
+var ic_lst = MODIS_LST.filterDate("2018-06-01", "2019-06-01").select("LST_Night_1km")
+
+//////// Visualizar espacialmente incendios
+
+Map.addLayer(ic_fire.max().clip(region), {min:0, max:10, palette:["blue", "red"]}, "Fire Mask")
+
+/////////////// function para convertir Kelvins en Degrees Celsius
+
+function ConvertToCelsius (img){
+  
+  var lst_factor = 0.02
+  var offset = -273.15
+  
+  img = img.multiply(lst_factor).add(offset).copyProperties(img, ["system:time_start"])
+  
+  return img
+}
+
+//////// Colección MODIS en Degree Celsius
+
+ic_lst = ic_lst.map(ConvertToCelsius)
+
+/////////////////////////////////// Gráficos!
+
+///// Crear Feature Collection
+
+var fc_samples = ee.FeatureCollection([north, central, south])
+
+///// Chart 1
+
+var chart_fireMask = ui.Chart.image.seriesByRegion({
+  
+  imageCollection:ic_fire,
+  regions: fc_samples,
+  reducer: ee.Reducer.max(),
+  scale:1000,
+  seriesProperty: "class"
+}).setOptions({
+  
+  title: "Max Radiative Power",
+  vAxis: {title: "Power"},
+  hAxis: {title: "Date"}
+})
+
+print(chart_fireMask, "Chart fire Mask")
+
+
+////// Chart 2 (LST)
+
+var chart_LST = ui.Chart.image.seriesByRegion({
+  
+  imageCollection:ic_lst,
+  regions: fc_samples,
+  reducer: ee.Reducer.max(),
+  scale:1000,
+  seriesProperty: "class"
+}).setOptions({
+  
+  title: "Max Temperature",
+  vAxis: {title: "Temperature"},
+  hAxis: {title: "Date"}
+})
+
+print(chart_LST, "Chart LST")
+
+

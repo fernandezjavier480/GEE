@@ -1,0 +1,259 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var Colombia = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-78.92529990399782, 6.355162681554667],
+          [-79.27686240399782, 4.254942706224511],
+          [-80.50733115399782, 1.7097771376105828],
+          [-78.48584677899782, -0.0477815410234591],
+          [-73.65186240399782, -2.156647104722706],
+          [-72.25840375790737, -3.993227287630058],
+          [-70.3247217665584, -5.090063760162947],
+          [-68.91856000790739, -3.90554538670319],
+          [-68.83066938290739, -2.1502559445657567],
+          [-68.21543500790739, 0.22228544777310705],
+          [-66.28184125790739, 0.5738389117321568],
+          [-66.19395063290739, 3.1211318662503804],
+          [-66.36973188290739, 6.099404778936454],
+          [-68.47910688290739, 7.059822398080122],
+          [-71.11582563290737, 8.453170446623195],
+          [-71.37949750790737, 10.53353633008722],
+          [-70.76426313290737, 12.428347259741201],
+          [-73.22520063290737, 12.514164049918017],
+          [-75.15879438290737, 10.79265493041989],
+          [-78.57509695088201, 7.8910062700489405]]]),
+    Mexico = 
+    /* color: #98ff00 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-116.60445810844422, 32.69971897251885],
+          [-115.19820810844422, 28.849724899796595],
+          [-113.87984873344422, 26.907619498798077],
+          [-113.08883310844422, 24.13196490956801],
+          [-109.83687998344422, 22.599050197591264],
+          [-111.36104370951178, 27.260240231721642],
+          [-113.38252808451178, 29.80799451699482],
+          [-108.72432495951178, 25.845129732177345],
+          [-107.05440308451178, 21.908133788428685],
+          [-105.29659058451178, 17.942933269305872],
+          [-99.84737183451178, 15.586790217875185],
+          [-94.57393433451178, 15.92514287767464],
+          [-92.11299683451178, 14.48334521429436],
+          [-90.88252808451178, 16.6001299537933],
+          [-88.42159058451178, 18.110085950339876],
+          [-91.05830933451178, 21.744953721950306],
+          [-94.31026245951178, 19.275623088619888],
+          [-96.24385620951178, 21.418037978528655],
+          [-96.15596558451178, 23.93178205366214],
+          [-98.52901245951178, 26.790481526253693],
+          [-100.81416870951178, 29.11928931990997],
+          [-104.85713745951178, 30.79445853943875],
+          [-110.83369995951178, 32.440939753837405],
+          [-115.14034058451178, 32.51508406305001]]]),
+    CHIRPS = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY"),
+    Nicaragua = 
+    /* color: #0b4a8b */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-87.43645870629166, 13.212232556348287],
+          [-87.63421261254166, 12.933991599085529],
+          [-86.97036146694151, 12.003934440323915],
+          [-86.26723646694151, 11.487634927965319],
+          [-85.93764662319151, 11.013527272054692],
+          [-85.60805677944151, 11.250678650463797],
+          [-85.95961927944151, 12.218770122307225],
+          [-85.38833021694151, 11.853447297117677],
+          [-84.77309584194151, 11.444566655589673],
+          [-83.96010756069151, 11.207574615445884],
+          [-83.54262709194151, 11.681360411713548],
+          [-83.34487318569151, 12.755090493111437],
+          [-83.25698256069151, 13.760267647304527],
+          [-83.14711927944151, 14.56983383968829],
+          [-82.94936537319151, 15.079622008717644],
+          [-84.37758802944151, 14.888592314811131],
+          [-85.10268568569151, 14.803635709042764],
+          [-86.20131849819151, 13.95226672719009],
+          [-86.77260756069151, 13.546750481286239]]]),
+    Guyana = 
+    /* color: #ffc82d */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-59.91856051076991, 8.315098945308494],
+          [-62.20371676076991, 7.226572085323472],
+          [-60.00645113576991, 3.4205330425779445],
+          [-60.31406832326991, 1.400942683893108],
+          [-57.63340426076991, 1.2691425628034145],
+          [-56.57871676076991, 2.147649519857487],
+          [-56.97422457326991, 6.703121618663612],
+          [-59.47910738576991, 8.402055959837533]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+
+/////Convertir las geometrías en objetos añadiendo propiedades
+
+
+var featureColombia = ee.Feature(Colombia).set("nombre", "Colombia")
+
+var featureMexico = ee.Feature(Mexico).set("nombre", "Mexico")
+
+var featureNicaragua = ee.Feature(Nicaragua).set("nombre", "Nicaragua")
+
+var featureGuyana = ee.Feature(Guyana).set("nombre", "Guyana")
+
+
+var FC = ee.FeatureCollection([featureColombia, featureMexico, featureNicaragua, featureGuyana])
+
+//Map.addLayer(FC)
+
+
+Map.centerObject(FC, 3)
+
+/////////////////////////////////////////////////////////// Diseñar la interfaz de usuario (UI)
+////////////////// 1. Añadir panel
+///////////////// 2. Añadir botones lista
+///////////////// 3. Añadir boton función
+
+var panel = ui.Panel({
+  style:{width: "400px"}
+})
+
+var selDate1 = ui.Select({
+  placeholder: "Selecciona fecha inicio"
+})
+
+var selDate2 = ui.Select({
+  placeholder: "Selecciona fecha final"
+})
+
+var button = ui.Button({
+  label: "Calcula precipitación",
+  onClick: function(){rainfallTotals(selDate1.getValue(), selDate2.getValue())}
+})
+
+//ui.root.add(panel.add(selDate1).add(selDate2).add(button))
+
+//////////////////////////////////////////////////////////// Crear función que genere un listado de fechas diarias. Desde hoy a dos años atras
+
+function getDates(){
+  
+  var todayDate = ee.Date("2020-11-12")
+  var startDate = todayDate.advance(-2, "years")
+  var daysDifference = todayDate.difference(startDate, "day");
+  
+  var listOfDays = ee.List.sequence(1, daysDifference).map(EstimateDate)
+  
+  function EstimateDate (numberOfDays){
+    
+    var currentDate = startDate.advance(numberOfDays, "day").format("yyyy-MM-dd");
+    return currentDate
+    
+  }
+  
+  return listOfDays
+}
+
+var dateList = getDates()
+
+print(dateList)
+
+////////////////////////////////////////////////////////// Función para pasar los datos de un server side a un client side
+
+function clientSide (DateList){
+  selDate1 = ui.Select({
+    items: DateList,
+    placeholder: "Selecciona fecha inicio"
+  })
+  selDate2 = ui.Select({
+    items: DateList,
+    placeholder: "Selecciona fecha final"
+  })
+  
+  ui.root.add(panel.add(selDate1).add(selDate2).add(button))
+  
+}
+
+var client_side = dateList.evaluate(clientSide)
+
+
+
+///////////////////////////////////////////////// Crear la función que dará funcionalidad al botón "Calcula precipitación"
+
+function rainfallTotals (fromDate, toDate){
+  
+  var rain = CHIRPS.filterDate(fromDate, toDate).sum().rename("Acc_rain")
+  
+  var stats = rain.reduceRegion(ee.Reducer.minMax(), FC, 5000)
+  
+  stats.evaluate(function(thisDictionary){
+    
+    var visible = {min: thisDictionary.Acc_rain_min,
+                  max: thisDictionary.Acc_rain_max,
+                  palette:["red", "orange", "green", "blue"]}
+
+Map.addLayer(rain.clip(FC), visible, "Accumulated rainfall")
+
+/*
+ * Legend setup
+ */
+
+// Creates a color bar thumbnail image for use in legend from the given color
+// palette.
+function makeColorBarParams(palette) {
+  return {
+    bbox: [0, 0, 1, 0.1],
+    dimensions: '100x10',
+    format: 'png',
+    min: 0,
+    max: 1,
+    palette: palette,
+  };
+}
+
+// Create the color bar for the legend.
+var colorBar = ui.Thumbnail({
+  image: ee.Image.pixelLonLat().select(0),
+  params: makeColorBarParams(visible.palette),
+  style: {stretch: 'horizontal', margin: '0px 8px', maxHeight: '24px'},
+});
+
+// Create a panel with three numbers for the legend.
+var legendLabels = ui.Panel({
+  widgets: [
+    ui.Label(visible.min, {margin: '4px 8px'}),
+    ui.Label(
+        ((visible.max + visible.min) / 2),
+        {margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
+    ui.Label(visible.max, {margin: '4px 8px'})
+  ],
+  layout: ui.Panel.Layout.flow('horizontal')
+});
+
+var legendTitle = ui.Label({
+  value: 'Map Legend: Precipitación acumulada',
+  style: {fontWeight: 'bold'}
+});
+
+var legendPanel = ui.Panel([legendTitle, colorBar, legendLabels]);
+Map.add(legendPanel)//.widgets().set(3, legendPanel);
+
+  })
+ 
+  
+  var chart = ui.Chart.image.seriesByRegion({
+    imageCollection: CHIRPS.filterDate(fromDate, toDate),
+    regions: FC,
+    reducer:ee.Reducer.mean(),
+    band: "precipitation",
+    scale:5000,
+    xProperty:"system:time_start",
+    seriesProperty:"nombre" })
+
+panel.add(chart)
+
+}
+
+
+
+
+

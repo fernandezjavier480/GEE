@@ -1,0 +1,62 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geomNorth = 
+    /* color: #bf04c2 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[124.6652593641386, -23.324825356792786],
+          [124.6652593641386, -27.802854484238626],
+          [128.7521734266386, -27.802854484238626],
+          [128.7521734266386, -23.324825356792786]]], null, false),
+    geomSouth = 
+    /* color: #530cff */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[126.4670171766386, -25.84214010948274],
+          [126.4670171766386, -30.37545448069066],
+          [130.7297124891386, -30.37545448069066],
+          [130.7297124891386, -25.84214010948274]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Create geometries (rectangles), transform them to a feature, add properties and then 
+// we calculate the area and the perimeter of the feautres:
+
+var north = ee.Feature( geomNorth, {Name:'North'} );
+var south = ee.Feature( geomSouth, {Name:'South'} );
+
+var north_area= north.area(1).multiply(0.000001);
+var south_area= south.area(1);
+var north_perimeter = north.perimeter(1);
+var south_perimeter = south.perimeter(1);
+
+print(north_area, "north_area")
+
+// north unioned with south with an allowable error of 1m (tolerance level)
+var union = north.union( south, 1);
+Map.addLayer( union, {color:'red'}, 'union');
+
+print(union)
+
+// north intersected with south with an allowable error of 1m
+var intersection = north.intersection( south, 1 );
+Map.addLayer( intersection, {color:'blue'}, 'intersection');
+
+// north symmetrical difference (exclusive or XOR) with south with an allowable error of 1m
+var symmetricDiff = north.symmetricDifference( south, 1 );
+Map.addLayer( symmetricDiff, {color:'yellow'}, 'symmetricDiff');
+
+
+
+/// Buffer
+
+var buffer = intersection.buffer(300000, 1)
+Map.addLayer( buffer, {color:'yellow'}, 'buffer');
+

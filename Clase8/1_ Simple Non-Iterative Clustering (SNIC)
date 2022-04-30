@@ -1,0 +1,93 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-101.02544317626955, 37.781126084581146],
+          [-101.02544317626955, 37.73552564968693],
+          [-100.94235906982424, 37.73552564968693],
+          [-100.94235906982424, 37.781126084581146]]], null, false),
+    imageCollection = ee.ImageCollection("COPERNICUS/S2_SR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+////////// Localizacion
+
+Map.setCenter(-100.9836, 37.7587, 13)
+
+/////// Imagen a clasificar
+
+var bands = ["B2", "B3", "B4", "B8"]
+
+var imagen = imageCollection.filterDate("2019-01-01", "2019-12-31")
+                            .filterBounds(geometry)
+                            .filterMetadata("CLOUDY_PIXEL_PERCENTAGE", "less_than", 10)
+                            .median()
+                            .clip(geometry)
+                            .select(bands)
+     
+                            
+print(imagen, "RGB")
+                            
+Map.addLayer(imagen, {min:0, max:3500, bands:["B4", "B3", "B2"]}, "RGB a clasificar")
+
+/////////////////////////////////////////// Simple Non-Iterative Clustering (SNIC) //////////////////////////////
+
+///////  1. Vamos a aplicar una metodología de agrupación super-píxel (clusters) que esten conectados espacial y espectralmente.
+
+/////// 2. Lo primero que necesitamos es definir la malla de semillas. Esta malla nos ayudará a definir los clusters
+
+var seed = ee.Algorithms.Image.Segmentation.seedGrid(80)
+
+var im_snic = ee.Algorithms.Image.Segmentation.SNIC({
+  image: imagen,
+  compactness:100,
+  connectivity:4,
+  neighborhoodSize: 250,
+  seeds: seed }).reproject("EPSG:4326", null, 10)
+  
+print(im_snic, "SNIC")
+
+var clusters = im_snic.select("clusters")
+
+Map.addLayer(clusters.randomVisualizer(), {}, "Clusters")
+Map.addLayer(im_snic.select("B4_mean").randomVisualizer(), {}, "B4 SNIC")
+
+Map.addLayer(imagen.select("B4").randomVisualizer(), {}, "B4 normal")
+
+//////////////////////////////////// Vamos a derivar el área de cada uno de los objetos (cultivos)
+
+var im_area = ee.Image.pixelArea().addBands(clusters)
+                                  .reduceConnectedComponents(ee.Reducer.sum(), "clusters", 256)
+                                  .divide(1e6)
+                                  
+Map.addLayer(im_area, {min:0, max:3, palette:["red", "orange", "yellow", "green", "blue"]}, "Areas")
+
+///////// Si no se puede visualizar se ha de exportar
+/*
+
+Export.image.toDrive({
+  image: im_area,
+  scale:10,
+  region: geoemtry,
+  maxPixels:1e13,
+  description: "Areas objetos"
+})
+*/
+
+//////////////////////////////// Vectorizar (segmentar) los resultados (raster)
+
+var vectors = im_snic.reduceToVectors({
+  reducer: ee.Reducer.mean(),
+  geometry: geometry,
+  scale:10,
+  maxPixels:1e13
+})
+
+Map.addLayer(vectors)
+
+print(vectors.size(), "Numero de cultivos")
+                                  

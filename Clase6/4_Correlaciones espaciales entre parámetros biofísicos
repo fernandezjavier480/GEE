@@ -1,0 +1,53 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var LST_modis = ee.ImageCollection("MODIS/006/MOD11A1"),
+    geometry = 
+    /* color: #00ffff */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[12.152578491692783, 46.621207685031386],
+          [12.152578491692783, 46.37731468625989],
+          [12.624990601067783, 46.37731468625989],
+          [12.624990601067783, 46.621207685031386]]], null, false),
+    dem = ee.Image("CGIAR/SRTM90_V4");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+/////////// Definir las variables
+
+///////// Temperature
+
+var temperatura = LST_modis.filterDate("2018-01-01", "2019-01-01")
+                            .select("LST_Day_1km")
+                            .median()
+                            .multiply(0.02)
+                            .subtract(273.15)
+                            .rename("temperatura")
+                            .clip(geometry)
+                            
+////////// Digital Elevation Model (DEM)
+
+var DEM = dem.select("elevation").rename("elevacion").clip(geometry)
+
+Map.addLayer(DEM, {min:600, max:3000, palette:["red", "brown", "yellow", "white"]}, "DEM")
+
+Map.addLayer(temperatura, {min:0, max:20, palette:["red", "brown", "yellow", "white"]}, "Temperatura")
+
+///////////////////// Combinar las imagenes
+
+var imagen = DEM.addBands(temperatura)
+
+///// Crear Feature Collection de puntos con 2 valores (elevacion y temperatura)
+
+var points = imagen.sample({region: geometry, scale: 90, numPixels: 2500, geometries: true})
+
+Map.addLayer(points)
+
+//////////////////// Gráfico (ui.Chart.feature)
+
+
+var chart = ui.Chart.feature.byFeature(points, "elevacion", "temperatura").setChartType("ScatterChart")
+
+print(chart, "Correlación Elevacion-Temperatura")

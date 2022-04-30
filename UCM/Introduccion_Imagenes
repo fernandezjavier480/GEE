@@ -1,0 +1,73 @@
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                    INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                             ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                 Introducción a Imágenes
+ ===========================================================================================*/
+/*Empiece de nuevo abriendo una nueva pestaña. Busque imágenes, encuéntrelas y visualícelas, 
+con parámetros de visualización cada vez más detallados..*/
+//===========================================================================================//
+// Busque 'dsm' (modelo de superficie digital), importelo y renombre la imagen: imageCollection por 'dsm':
+var dsm = ee.Image('JAXA/ALOS/AW3D30_V1_1');
+
+// Importarlo también y nombrar la importación 'dsm'.
+// Tenga en cuenta que al pegar el ID en el constructor y
+// la importación es equivalente.
+
+// ¡La impresión es muy útil!
+// Explore el objeto impreso en la consola.
+// Tenga en cuenta varias bandas. Explore la descripción del conjunto de datos.
+print(dsm);
+
+// Monitor. (Hola imagen.)
+// Map.addLayer (dsm); // ¡Malo! Primeras tres bandas RGB.
+
+// Zoom a un área de interés.
+// Explore el inspector.
+// Explore el control de capa y los estiramientos.
+// Codificar algunos parámetros.
+// Agrega un nombre de capa.
+Map.addLayer(dsm.select('AVE'), {min: 0, max: 5000}, 'dsm');
+
+// Agrega color. (Seleccione colores apropiados!).
+var elevPaleta = ['black', 'blue', 'green', 'red', 'white'];
+var elevParams = {min: 0, max: 400, palette: elevPaleta};
+Map.addLayer(dsm.select('AVE'), elevParams, 'dsm en seudocolor');
+
+/////////////////////////////////////////////////////////////////////////////
+
+//cambia la paleta de representación
+
+function showPalette(name, palette) {
+  var image = ee.Image.pixelLonLat().select(0) 
+    .clip(ee.Geometry.Rectangle({ coords: [[0, 0], [100, 10]], geodesic: false }))
+    .visualize({ min: 0, max: 100, palette: palette })
+
+  print(name)
+  print(ui.Thumbnail(image))
+}
+
+//llama al objeto
+var palettes = require('users/gena/packages:palettes')  
+
+// ve al link: http://colorbrewer2.org , para una lista completa de paletas
+showPalette('Spectral', palettes.colorbrewer.Spectral[5])
+showPalette('RdYlGn', palettes.colorbrewer.RdYlGn[11].reverse())
+showPalette('Paired', palettes.colorbrewer.Paired[10])
+
+// ve al link: https://matplotlib.org/cmocean/ , para una lista completa de paletas
+showPalette('Algae', palettes.cmocean.Algae[7])
+showPalette('Phase', palettes.cmocean.Phase[7])
+showPalette('Deep', palettes.cmocean.Deep[7])
+
+// Declara una nueva variable para la nueva paleta
+var Spectra = ('Spectral', palettes.colorbrewer.Spectral[5]);
+var elevParams2 = {min: 0, max: 5000, palette: Spectra};
+Map.addLayer(dsm.select('AVE'), elevParams2, 'dsm en seudocolor 2');

@@ -1,0 +1,5 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var image = ee.ImageCollection("SKYSAT/GEN-A/PUBLIC/ORTHO/MULTISPECTRAL");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+Map.addLayer(image,{bands:["N","R","G"]},"Mosaico de"+image);

@@ -1,0 +1,120 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var Perth = 
+    /* color: #ffc82d */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.8062662521271, -31.910169515836706],
+          [115.8062662521271, -32.07730334086972],
+          [115.9985269943146, -32.07730334086972],
+          [115.9985269943146, -31.910169515836706]]], null, false),
+    geometry = 
+    /* color: #bf04c2 */
+    /* shown: false */
+    ee.Geometry.MultiPoint();
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+
+print(Perth, "Area de estudio")
+
+//Acceder a la colección de imágenes Sentinel-2
+
+var S2 = ee.ImageCollection("COPERNICUS/S2_SR")
+
+//print(S2.size())
+
+/////////////// Filtrar la colección S2 en base a nuestra área de estudio (Considerando únicamente las escenas S2 que intersecten nuestra geometria -Perth-)
+
+var filtered = S2.filterBounds(Perth)
+
+print(filtered, "S2 filtrada por area de estudio")
+
+///////////// Filtrar la colección en base a un período de tiempo
+
+filtered = filtered.filterDate("2019-01-01", "2020-12-31")
+
+print(filtered, "S2 filtrada por fecha y área de estudio")
+
+/////////////// Filtrar utilizando los metadatos. Queremos obtener únicamente las imágenes que se hayan tomado con la plataforma (spacecraft) Sentinel-2A.
+
+filtered = filtered.filterMetadata("SPACECRAFT_NAME", "equals", "Sentinel-2A")
+
+print(filtered, "S2 filtrada por area de estudio, fechas y metadatos")
+
+//////////// Filtrar colección en base al área cubierta por nubes en cada una de las imágenes
+
+var filterClouds = ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 10)
+
+filtered = filtered.filter(filterClouds)
+
+print(filtered, "S2 filtrada por area de estudio, fechas, spaceCraft y nubes")
+
+//////////////////////////////////////////////////////////////// Seleccionar la banda 8 (NIR) de la primera imagen de mi colección
+
+var imagen = filtered.first()
+
+Map.addLayer(imagen, {min:0, max:3500, bands:["B8", "B4", "B2"]}, "Falso Color primera imagen coleccion", false)
+Map.addLayer(imagen, {min:0, max:3500, bands:["B4", "B3", "B2"]}, "RGB primera imagen coleccion", false)
+
+/////////////////////////////////////////////////////////// REDUCERS ////////////////////////////////////////////////////////////////////////
+
+/////// Spatial Reducer (Zonal Statistics)
+
+var NIR = imagen.select("B8")
+
+var reducer_minMax = ee.Reducer.minMax()
+
+var imagenNIR_minMax = NIR.reduceRegion(reducer_minMax, Perth)
+
+print(imagenNIR_minMax, "minMax NIR")
+
+//////////// Reducer Collection (reducir una colección de "x" imagenes a una sola imagen )
+
+var reducerMean = ee.Reducer.mean()
+
+var image_mean = filtered.reduce(reducerMean)
+
+print(image_mean, "Image mean")
+
+Map.addLayer(image_mean, {min:0, max:3500, bands:["B4_mean", "B3_mean", "B2_mean"]}, "RGB medio")
+
+///////////////////////////////////////////////////////////// NDVI (Normalized Difference Vegetation Index) ////////////////////////////////
+
+
+function ndvi (imagen){
+  
+  var NIR = imagen.select("B8")
+  var RED = imagen.select("B4")
+  
+  var NDVI = (NIR.subtract(RED)).divide(NIR.add(RED)).rename("NDVI")
+  
+  return NDVI
+}
+
+
+var NDVI_col = filtered.map(ndvi)
+
+print(NDVI_col, "NDVI colección")
+
+Map.addLayer(NDVI_col.first(), {min:0, max:1, palette:["red", "orange", "green", "blue"]}, "NDVI primera imagen", false)
+
+/////////////// Reducir la colecciñon de NDVI a una sola imagen que muestre el NDVI medio para nuestro periodo de estudio
+
+var NDVI_medio = NDVI_col.reduce(reducerMean)
+
+Map.addLayer(NDVI_medio, {min:0, max:1, palette:["red", "orange", "green", "blue"]}, "NDVI medio")
+
+///////////////////////////////////////////////////////////// Mapa categorico del NDVI 
+
+var NDVI_categorico = ee.Image(1).rename("Categoria")
+.where(NDVI_medio.gt(-1).and(NDVI_medio.lt(0.1)),1)
+.where(NDVI_medio.gt(0.1).and(NDVI_medio.lt(0.5)),2)
+.where(NDVI_medio.gt(0.5),3)
+
+Map.addLayer(NDVI_categorico.clip(Perth), {min:1, max:3, palette:["blue", "grey", "green"]}, "NDVI categorico")
+
+

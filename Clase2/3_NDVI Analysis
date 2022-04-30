@@ -1,0 +1,250 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var AOI = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.79555483326698, -31.88534165867102],
+          [115.79555483326698, -32.074633034479476],
+          [116.02489443287635, -32.074633034479476],
+          [116.02489443287635, -31.88534165867102]]], null, false),
+    agua = 
+    /* color: #98ff00 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.83452362789338, -31.980508673831924],
+          [115.83452362789338, -31.988152777565436],
+          [115.84327835811798, -31.988152777565436],
+          [115.84327835811798, -31.980508673831924]]], null, false),
+    vegetacion = 
+    /* color: #0b4a8b */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.82720229650916, -31.960025386138017],
+          [115.82720229650916, -31.966142084880005],
+          [115.83552787329138, -31.966142084880005],
+          [115.83552787329138, -31.960025386138017]]], null, false),
+    urbano = 
+    /* color: #ffc82d */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.92059220127932, -31.987195880068324],
+          [115.92059220127932, -32.000007559019195],
+          [115.93655670933596, -32.000007559019195],
+          [115.93655670933596, -31.987195880068324]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//////////// Convertir nuestras geometrias en objetos. Como? Añadiendo propiedades:
+
+var featureAgua = ee.Feature(agua).set("nombre", "Agua")
+var featureVeg = ee.Feature(vegetacion).set("nombre", "Vegetacion")
+var featureUrbano = ee.Feature(urbano).set("nombre", "Urbano")
+
+print(featureUrbano)
+
+//////////// Crear Collección de objetos (Regions of Interest, ROIs)
+
+var ROIs = ee.FeatureCollection([featureAgua, featureVeg, featureUrbano])
+
+print(ROIs)
+Map.addLayer(ROIs, {}, "ROIs", false)
+
+///////////////////////////////////////////////// DATASET ///////////////////////////////////////////////////
+//////// Función para enmascarar cloudy pixels
+
+function maskL8sr(image) {
+  // Bits 3 and 5 are cloud shadow and cloud, respectively.
+  var cloudShadowBitMask = (1 << 3);
+  var cloudsBitMask = (1 << 5);
+  // Get the pixel QA band.
+  var qa = image.select('pixel_qa');
+  // Both flags should be set to zero, indicating clear conditions.
+  var mask = qa.bitwiseAnd(cloudShadowBitMask).eq(0)
+                 .and(qa.bitwiseAnd(cloudsBitMask).eq(0));
+  return image.updateMask(mask);
+}
+
+var l8_IC_filt = ee.ImageCollection('LANDSAT/LC08/C01/T1_SR')
+                  .filterDate('2018-01-01', '2020-12-31')
+                  .filterBounds(AOI)
+                  .map(maskL8sr);
+                  
+print(l8_IC_filt, "Colección de imágenes filtrada")
+
+Map.addLayer(l8_IC_filt.first(), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "Primera imagen coleccion", false)
+
+////////////////////////////////////////////// MOSAICAR IMAGENES ///////////////////////////////////////////
+///// Utilizando mosaic()
+var mosaico = l8_IC_filt.mosaic()
+
+Map.addLayer(mosaico, {min:0, max:3500, bands:["B4", "B3", "B2"]}, "MOSAICO", false)
+
+/////Utilizando un reducer.
+
+var mediana = ee.Reducer.median()
+
+var l8_IC_mediana = l8_IC_filt.reduce(mediana)
+
+//////////////////////////////////////////////// NDVI Analysis //////////////////////////////////////////////
+/// Crear funcion para mapear el NDVI en nuestra colección ya filtrada (l8_IC_filt)
+
+function NDVI (imagen){
+  
+  var NIR = imagen.select("B5")
+  var RED = imagen.select("B4")
+  var ndvi = (NIR.subtract(RED)).divide(NIR.add(RED)).rename("NDVI")
+  
+  
+  return ndvi.set("system:time_start", imagen.get("system:time_start"))
+}
+
+
+/////////// Coleccion de NDVI ordenada cronologicamente
+var NDVI_IC = l8_IC_filt.map(NDVI).sort("system:time_start")
+
+print(NDVI_IC, "NDVI coleccion")
+
+/////////////////////////////////////////////////////// Otras maneras de generar NDVI's
+
+///////// Utilizando la función de GEE (normalizedDifference)
+
+var NDVI = l8_IC_mediana.normalizedDifference(["B5_median", "B4_median"])
+
+Map.addLayer(NDVI, {min:0, max:1, pelette:["red", "orange", "blue", "green"]}, "NDVI modo 1")
+
+
+//////// Utilizando otra función 
+
+
+var NDVI_2 = l8_IC_mediana.expression(
+  "(nir-red)/(nir+red)",
+  {"nir": l8_IC_mediana.select("B5_median"), 
+    "red":l8_IC_mediana.select("B4_median")}).rename("NDVI")
+    
+Map.addLayer(NDVI_2,{min:0, max:1, palette:["red","orange", "blue", "green"]}, "NDVI modo 2")
+
+
+
+
+////////////////////////////////////////////////////// Zonal Reducers para obtener un unico valor resultado de la agregación de píxeles dentro de un area.
+
+/////// Crear variables con los reducers y combinar reducers para obtener una sola variable que los contenga todos.
+
+var mean = ee.Reducer.mean()
+var stdDev = ee.Reducer.stdDev()
+var median = ee.Reducer.median()
+var minMax = ee.Reducer.minMax()
+
+var combine_reducers = mean.combine(stdDev, "", true).combine(median,"", true).combine(minMax, "", true)
+
+//////////////////////// Utilizar ReduceRegion para agregar todos los pixeles de una region a un solo valor
+
+/////// Reducer dentro de nuestra AOI
+
+var zonal_stats_AOI = NDVI.reduceRegion({
+  reducer: combine_reducers,
+  geometry: AOI,
+  scale: 30
+})
+
+print(zonal_stats_AOI, "Zonal statistics AOI")
+
+///// Reducir dentro de nuestras ROIs (agua, vegetacion y urbano)
+
+var zonal_stats_ROIs = NDVI.reduceRegions({
+  reducer: combine_reducers,
+  collection: ROIs,
+  scale: 30
+})
+
+print(zonal_stats_ROIs, "Zonal statistics ROIs")
+
+
+///////////////////////////////////////////////////// GRAFICOS ///////////////////////////////////////////////////////////
+
+var chart_timeSeries_NDVI_AOI = ui.Chart.image.seriesByRegion({
+  imageCollection:NDVI_IC,
+  regions:AOI,
+  reducer:ee.Reducer.mean(),
+  band:"NDVI",
+  scale:30,
+  xProperty:"system:time_start",
+  seriesProperty:"name"}).setOptions(
+    {vAxis: {title: "Mean NDVI"},
+    hAxis: {title: "Time"},
+    title: "Evolucion temporal NDVI promedio Perth"})
+
+  print(chart_timeSeries_NDVI_AOI, "Grafico evolucion temporal NDVI (AOI)")
+
+
+////////// Plotear la evolucion temporal del NDVI de agua, vegetacion y urbano
+
+var chart_timeSeries_NDVI_ROIs = ui.Chart.image.seriesByRegion({
+  imageCollection:NDVI_IC,
+  regions:ROIs,
+  reducer:ee.Reducer.mean(),
+  band:"NDVI",
+  scale:30,
+  xProperty:"system:time_start",
+  seriesProperty:"nombre"}).setOptions(
+    {vAxis: {title: "Mean NDVI"},
+    hAxis: {title: "Time"},
+    title: "Evolucion temporal NDVI promedio Perth"})
+
+  print(chart_timeSeries_NDVI_ROIs, "Grafico evolucion temporal NDVI (ROIs)")
+
+//////////// Grafico en base a los estadisticos obtenidos anteriormente. 
+///////// Grafico que muestra el NDVI medio para cada una de nuestras ROIs
+
+var chart_NDVImean_ROIs = ui.Chart.feature.byProperty({
+  features:zonal_stats_ROIs, 
+  xProperties:["mean"],
+  seriesProperty:["nombre"]})
+  
+  
+print(chart_NDVImean_ROIs, "Grafico NDVI medio ROIs")
+
+
+//////////////////////////////////////////////////////////////// Cambios en NDVI verano-otoño/spring-winter ///////////////////////////////////////////////////////////
+
+var startEarly = "2019-01-01"
+var endEarly = "2019-05-30"
+
+var startLate = "2019-06-01"
+var endLate = "2019-12-31"
+
+var ndvi_early = NDVI_IC.filterDate(startEarly, endEarly).filterBounds(AOI).mean()
+var ndvi_late = NDVI_IC.filterDate(startLate, endLate).filterBounds(AOI).mean()
+
+//////// Vamos a restar ndvi_late - ndvi_early
+
+var NDVI_change = ndvi_late.subtract(ndvi_early)
+
+Map.addLayer(NDVI_change.clip(AOI), {min:-0.1, max:0.1, palette:["red", "orange", "green", "blue"]}, "NDVI cambio")
+
+//////////// Plotear RGB medios para cada uno de los periodos
+
+var l8_early = l8_IC_filt.filterDate(startEarly, endEarly).filterBounds(AOI).mean()
+var l8_late = l8_IC_filt.filterDate(startLate, endLate).filterBounds(AOI).mean()
+
+Map.addLayer(l8_early.clip(AOI), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "RGB early")
+Map.addLayer(l8_late.clip(AOI), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "RGB late")
+

@@ -1,0 +1,52 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-77.45966620913913, 6.935159918854697],
+          [-77.45966620913913, 4.245629325537147],
+          [-76.00947089663913, 4.245629325537147],
+          [-76.00947089663913, 6.935159918854697]]], null, false),
+    sar = ee.ImageCollection("COPERNICUS/S1_GRD"),
+    sentinel1 = ee.ImageCollection("COPERNICUS/S1_GRD");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+
+////// Filtrar la colección de imágenes
+
+var filter = sar.filterBounds(geometry)
+
+//print(filter, "s2 Filtro")
+
+var filtered = filter.filterDate("2019-01-01", "2020-12-31")
+
+
+var vh = filtered
+  // Filtra para obtener imágenes con polarización dual VV y VH.
+  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
+  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH'))
+  // Filtrar para obtener imágenes recopiladas en modo de franja ancha interferométrica.
+  .filter(ee.Filter.eq('instrumentMode', 'IW'));
+
+// Filtrar para obtener imágenes desde diferentes ángulos de mirada.
+var vhAscending = vh.filter(ee.Filter.eq('orbitProperties_pass', 'ASCENDING'));
+var vhDescending = vh.filter(ee.Filter.eq('orbitProperties_pass', 'DESCENDING'));
+
+// Cree un compuesto a partir de medias en diferentes polarizaciones y ángulos de mirada.
+var composite = ee.Image.cat([
+  vhAscending.select('VH').mean(),
+  ee.ImageCollection(vhAscending.select('VV').merge(vhDescending.select('VV'))).mean(),
+  vhDescending.select('VH').mean()
+]).focal_median();
+
+print(composite, "Composición")
+
+
+// Visualización como una combinación de características de polarización y retrodispersión.
+
+Map.addLayer(composite, {min: [-25, -20, -25], max: [0, 10, 0]}, 'composite');

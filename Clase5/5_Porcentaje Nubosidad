@@ -1,0 +1,87 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var s2 = ee.ImageCollection("COPERNICUS/S2_SR"),
+    geometry = 
+    /* color: #bf04c2 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-5.754746441934229, 43.58250614244526],
+          [-5.754746441934229, 43.323305801444],
+          [-5.221909527871729, 43.323305801444],
+          [-5.221909527871729, 43.58250614244526]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+function maskS2clouds(image) {
+  var qa = image.select('QA60');
+
+  // Bits 10 and 11 are clouds and cirrus, respectively.
+  var cloudBitMask = 1 << 10;
+  var cirrusBitMask = 1 << 11;
+
+  // Both flags should be set to zero, indicating clear conditions.
+  var mask = qa.bitwiseAnd(cloudBitMask).eq(0)
+      .and(qa.bitwiseAnd(cirrusBitMask).eq(0));
+
+  return image.addBands(mask);
+}
+
+//////////////// Dataset
+
+var dataset = s2.filterBounds(geometry)
+                .filterDate("2019-01-01", "2019-12-31")
+                .map(maskS2clouds)
+                
+print(dataset, "Dataset")
+                
+Map.addLayer(dataset.first(), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "RGB")
+
+Map.addLayer(dataset.first().select("QA60_1"))
+                
+////////////////////// Clip imagen
+
+var imagen = dataset.first().select("QA60_1").clip(geometry)
+                
+Map.addLayer(imagen, {}, "Imagen donde calcular porcentages")          
+                
+///////////////////// Reducers para sacar valores: totalPixels y totalCleanPixels
+
+var totalPixel = imagen.reduceRegion({
+  
+  reducer: ee.Reducer.count(),
+  geometry: geometry,
+  scale:10,
+  maxPixels: 1e13
+})
+
+print(totalPixel, "totalPixels")
+
+//////// Calcular el total de pixeles sin nubes
+
+var cleanPixels = imagen.reduceRegion({
+  
+  reducer: ee.Reducer.sum(),
+  geometry: geometry,
+  scale: 10,
+  maxPixels: 1e13
+})
+
+
+/////////////////////// FORMULAS PORCENTAGES
+
+var perct_cleanPixels = (cleanPixels.getNumber("QA60_1").multiply(100).divide(totalPixel.getNumber("QA60_1"))).round()
+
+var perc_cloud = ee.Number(100).subtract(perct_cleanPixels)
+
+print(perc_cloud, "Cloudy Pixel Percentage (%)")
+     
+print(cleanPixels, "cleanPixels")           
+                
+                
+                
+                
+                
+                
+                

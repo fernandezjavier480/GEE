@@ -1,0 +1,192 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.79165569001758, -31.885552839276816],
+          [115.79165569001758, -32.04691154969831],
+          [115.98940959626758, -32.04691154969831],
+          [115.98940959626758, -31.885552839276816]]], null, false),
+    s2 = ee.ImageCollection("COPERNICUS/S2_SR"),
+    water = 
+    /* color: #98ff00 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Feature(
+        ee.Geometry.Polygon(
+            [[[115.85686543284822, -31.96483857873637],
+              [115.85686543284822, -31.966367711465065],
+              [115.85892536937166, -31.966367711465065],
+              [115.85892536937166, -31.96483857873637]]], null, false),
+        {
+          "class": "water",
+          "system:index": "0"
+        }),
+    vegetation = 
+    /* color: #0b4a8b */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Feature(
+        ee.Geometry.Polygon(
+            [[[115.86851694880892, -31.961079352524553],
+              [115.86851694880892, -31.961625496638167],
+              [115.86914995013643, -31.961625496638167],
+              [115.86914995013643, -31.961079352524553]]], null, false),
+        {
+          "class": "veg",
+          "system:index": "0"
+        }),
+    urban = 
+    /* color: #ffc82d */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Feature(
+        ee.Geometry.Polygon(
+            [[[115.8951146157198, -31.96082386867019],
+              [115.8951146157198, -31.961442833475587],
+              [115.89595146493245, -31.961442833475587],
+              [115.89595146493245, -31.96082386867019]]], null, false),
+        {
+          "class": "urban",
+          "system:index": "0"
+        });
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+var bands = ["B2", "B3", "B4", "B8"]
+
+var im_s2 = s2.filterBounds(geometry).filterDate("2019-01-01", "2019-12-31")
+              .select(bands)
+              .filterMetadata("CLOUDY_PIXEL_PERCENTAGE", "less_than", 10)
+              .median()
+              
+              
+Map.addLayer(im_s2.clip(geometry), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "RGB s2")
+
+
+/////////////////// Feature Collection con los "endmembers" u firmas spectrales puras
+
+var fc_pts = ee.FeatureCollection([water,vegetation, urban])
+
+print(fc_pts)
+
+//////////////// Firmas espectrales de nuestros 3 ensdmembers
+
+var spectralProfiles = ui.Chart.image.regions({
+  
+  image: im_s2,
+  regions: fc_pts,
+  reducer: ee.Reducer.mean(),
+  scale: 10,
+  seriesProperty: "class"
+})
+
+spectralProfiles.setOptions({
+  
+  vAxis: {title:"Response"},
+  hAxis: {title:"Wavelength (nm)"},
+  title: "Spectral Profiles"})
+
+
+print("Spectral Profiles:",spectralProfiles )
+
+//////////////// Extraer los perfiles espectrales en un Array
+
+var spectralStatsRegion = im_s2.reduceRegions({
+  collection: fc_pts,
+  reducer: ee.Reducer.mean(),
+  scale: 10
+})
+
+print(spectralStatsRegion, "Stats Spectral Profiles")
+
+////////////// Creamos una propiedad nueva que contenga todos los valores medios de la firma espectral
+
+spectralStatsRegion = spectralStatsRegion.makeArray(bands, "BandsMeanValue")
+
+print(spectralStatsRegion, "spectralStatsRegion")
+
+/////// Array of classes: water, urban, veg
+
+var classes = spectralStatsRegion.aggregate_array("class")
+
+print(classes, "Classes")
+
+////// Array of BandMeanValues
+
+var BandsMeanValue = spectralStatsRegion.aggregate_array("BandsMeanValue")
+
+print(BandsMeanValue, "BandsMeanValue")
+
+/////////// Function to convert Array to List
+
+function ConvertArrayToList(thisArray){
+  
+  var thisList = ee.Array(thisArray).toList()
+  
+  return thisList
+}
+
+BandsMeanValue = BandsMeanValue.map(ConvertArrayToList)
+
+print(BandsMeanValue, "BandsMeanValue_listOfLists")
+
+///////////////////////////////////////////// Unmixing Spectral /////////////////////////////////////
+
+var im_s2_unmixed = im_s2.unmix(BandsMeanValue, true, true).rename(classes)
+
+Map.addLayer(im_s2_unmixed.clip(geometry), {bands:["water", "veg", "urban"]}, "Unmixed")
+
+Map.addLayer(im_s2_unmixed.clip(geometry).select("water"), {min:0, max:1}, "Water (Unmixed)")
+
+/*  Mascara agua
+
+var agua = im_s2_unmixed.select("water").updateMask(im_s2_unmixed.select("water").gt(0.9))
+
+Map.addLayer(agua.clip(geometry).select("water"), {min:0, max:1}, "Water Mask")
+
+*/
+
+///////////////////////////////////////////// Reconstruccion y comparativa de imagenes
+
+var im_urban = im_s2_unmixed.select("urban")
+var im_veg = im_s2_unmixed.select("veg")
+var im_water = im_s2_unmixed.select("water")
+
+////////////////////////////////////////// Server-side to Client-side
+
+BandsMeanValue = BandsMeanValue.getInfo()
+
+//////////// Multiplicar cada imagen (urbano, agua y vegetacion) por la firma espectral (endmember, BandsMeanValue)
+
+var im_water = im_water.multiply(BandsMeanValue [0])
+var im_veg = im_veg.multiply(BandsMeanValue [1])
+var im_urban = im_urban.multiply(BandsMeanValue [2])
+
+/////////// Reconstruir la imagen 
+
+var s2_reconstructed = im_water.add(im_veg).add(im_urban).rename(im_s2.bandNames())
+
+Map.addLayer(s2_reconstructed.clip(geometry), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "RGB reconstructed")
+
+////////////////////////// Evaluacion de la pureza de los pixeles de la imagen s2 original
+
+var eucl_distance = im_s2.subtract(s2_reconstructed)
+                        .pow(ee.Image(2))
+                        .reduce(ee.Reducer.sum())
+                        .sqrt()
+                        
+Map.addLayer(eucl_distance.clip(geometry), {min:0, max:500, palette:["red", "yellow", "blue"]}, "Euclidian Distance")

@@ -1,0 +1,69 @@
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                    INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                      ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                 Objetos cliente vs.servidor
+ ===========================================================================================*/
+/*Todo en la sección anterior era un objeto del lado del cliente que vive en el navegador. 
+El código del lado del cliente es útil para muchas cosas y, a menudo, es necesario, por ejemplo, 
+al programar interfaces de usuario para Earth Engine. Sin embargo, los objetos del lado del cliente 
+NO deben confundirse con los objetos del lado del servidor como se demuestra a continuación. Comience
+con algunos objetos del lado del cliente y envuélvalos con constructores del lado del servidor 
+(ee.Algo...) para convertirlos en objetos del lado del servidor.*/
+//===========================================================================================//
+// Esto existe en el navegador.
+
+var listacliente= [0,1,2,3];
+print(listacliente);
+
+//Este es un identificador para algún objeto en la nube
+var listaserv=ee.List(listacliente);
+print(listaserv); //pero se ven iguales!
+
+var otralista=ee.List.sequence(0,3);
+print(listaserv); //Tambien es lo mismo!
+
+//Los objetos del lado del cliente son mutables. - .push
+listacliente.push (4);
+
+print(listacliente);
+
+//Eso no funcionará en la lista de servidores.
+//listaserv.push(4);//Error!
+//En la parte superior izquierda para descubrir métdos en objetos de servidor.
+//También tenga en cuenta que necesita capturar el nuevo objeto de una variable. 
+var listalarga=listaserv.add(45);
+print(listalarga);
+
+//Ejemplo de imagen: 
+
+var Imagencontante = ee.Image(13);
+
+// Esto no es lo que quieres:
+var ImagenX = Imagencontante + 42;
+// Tenga en cuenta que el navegador llama a toString() en el objeto y
+// luego le agrega '42'. El JSON que ves contiene las
+// instrucciones enviadas al servidor para ejecutar su código.
+print('ImagenX:', ImagenX);
+
+// Esta es la manera correcta:
+var algunaimagen = Imagencontante.add(42);
+// Haga clic con el **inspector** para observar el valor del pixel.
+Map.addLayer(algunaimagen, {}, 'alguna imagen constante');
+
+// Esta es una buena forma de solicitar el valor de un objeto de servidor:
+ee.Number(7).evaluate(function(n) {
+  var clientNum = n + 3;
+  print('Debiera ser 10.  Encontrado el: ' + clientNum);
+});
+
+
+
+

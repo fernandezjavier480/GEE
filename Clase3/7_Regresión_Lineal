@@ -1,0 +1,95 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var imageCollection = ee.ImageCollection("projects/eo-datascience-public/assets/silo_daily");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+//// Renombrar las variables 
+
+var  SILO = imageCollection.select("daily_rain")
+
+// Crear función que agrega datos a datos anuales
+
+function GetYearData(thisYear){
+  
+  var yearStart = ee.Date.fromYMD(thisYear, 1,1 )
+  var yearEnd   = ee.Date.fromYMD(thisYear, 12,31)
+  var IC        = SILO.filterDate(yearStart, yearEnd)
+  var suma      = IC.sum().set("Year", thisYear)
+  
+  return suma
+}
+
+
+var SILO_anual = ee.List.sequence(1920,2019).map(GetYearData)
+
+
+print(SILO_anual, "SILO anual list")
+
+
+//////////////////////////////////////// Convertir lista de imagenes en una coleccion
+
+
+var SILO_anual_col = ee.ImageCollection(SILO_anual).sort("Year")
+
+print(SILO_anual_col, "SILO anual")
+
+
+Map.addLayer(SILO_anual_col.first(), {min:400,max:1000, palette:["red", "orange", "green", "blue"]})
+
+
+////////////////////////// Crear función que convierta la propiedad tiempo  en una banda para la regresión
+
+
+
+function PrepararPredictores(thisImage){
+  
+  var year = ee.Number(thisImage.get("Year"))
+  
+  var bandYear = ee.Image(year).int16()
+  
+  var bandRain = thisImage.select("daily_rain")
+  
+  
+  var stackedImage = bandYear.addBands(bandRain)
+  
+  return stackedImage.rename("year", "rainfall")
+  
+}
+
+
+
+var SILO_regression = SILO_anual_col.map(PrepararPredictores)
+
+print(SILO_regression, "SILO 2 bandas")
+
+/////////////////////////////////////////////////////////////// LINEAR FIT /////////////////////////////////////////////////////////
+
+var reducer = ee.Reducer.linearFit()
+
+//////////////////////////// Seleccionar bandas en este orden: (1) variable independiente -year- y (2) variable dependiente -rainfall-.
+var SILO_variables_regression = SILO_regression.select(["year", "rainfall"])
+
+var linearFit_regr = SILO_variables_regression.reduce(reducer).select("scale").rename("slope")
+
+print(linearFit_regr, "Linear Fit")
+
+Map.addLayer(linearFit_regr.select("slope"), {min: -1, max:1, palette: ["red","orange", "white", "blue", "green"]}, "Linear trends rainfall")
+
+
+
+
+///////////////////////////////////////////////////////////// Explorar el grado de fiabilidad de nuestras tendencias a traves del p-value
+
+/////////////// p-value threshold = 0.05
+
+var p_value = ee.Reducer.pearsonsCorrelation()
+
+var p_value_SILO = SILO_variables_regression.reduce(p_value).select("p-value")
+
+var significance_level = ee.Image(1)
+.where(p_value_SILO.gt(0).and(p_value_SILO.lte(0.05)),2)
+.where(p_value_SILO.gt(0.05),3)
+
+Map.addLayer(significance_level, {min: 1, max:3, palette:["white", "blue", "red"]}, "Significance level")
+
+
+

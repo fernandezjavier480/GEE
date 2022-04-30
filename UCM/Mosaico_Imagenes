@@ -1,0 +1,16 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var limites = ee.FeatureCollection("FAO/GAUL/2015/level2");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var NombrePais = 'Colombia';
+var Pais= limites.filter(ee.Filter.eq('ADM0_NAME',NombrePais))
+
+var imageCollection=ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
+      .filterDate('2018-01-01','2019-12-31')
+      .filterBounds(Pais)
+      .filterMetadata("CLOUD_COVER","less_than",40);
+
+var image=imageCollection.mosaic();
+
+Map.addLayer(image.clip(Pais),{bands:["B5","B4","B3"]},"Mosaico de"+Pais);
+
+Map.centerObject(Pais);

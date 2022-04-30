@@ -1,0 +1,39 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = /* color: #128b1e */ee.Geometry.Point([-74.04214191573685, 9.022334539267133]),
+    l8sr = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+geometry = /* color: #0b4a8b */geometry;
+
+// Obtenga las imágenes con huellas que se cruzan con el punto.
+var spatialFiltered = l8sr.filterBounds(geometry);
+print(spatialFiltered);
+
+// Obtenga una única imagen de prueba.
+var testImage = spatialFiltered.first();
+print(testImage);
+
+// Defina una función que agregará una banda NDVI a una imagen Landsat 8.
+var addNDWI = function(image) {
+  var ndwi = image.normalizedDifference(['B3', 'B6']).rename('NDWI');
+  return image.addBands(ndwi);
+};
+// Prueba la función. Al hacerlo de esta manera, puede tener
+// sentencias print() en la función (porque no es map() ed).
+
+var ndwiVisParams = {
+  bands: 'NDWI', 
+  min: 0, 
+  max: 1, 
+  palette: ['white', 'blue']
+};
+
+Map.addLayer(addNDWI(testImage),ndwiVisParams,'test NDWI');
+//Si la función funciona, elimine las declaraciones print() de ella
+//Ahora mapea la función sobre toda la colección
+var conNDWI=l8sr.map(addNDWI);
+
+//verificar que todas las img de la collection tengan NDWI
+Map.addLayer (conNDWI.select("NDWI"),ndwiVisParams,"18sr con NDWI");
+
+

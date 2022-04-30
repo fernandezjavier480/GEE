@@ -1,0 +1,130 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var imageCollection = ee.ImageCollection("COPERNICUS/S2_SR"),
+    AOI = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.68270378403919, -31.89980775384961],
+          [115.68270378403919, -32.08732407066381],
+          [116.03014641099232, -32.08732407066381],
+          [116.03014641099232, -31.89980775384961]]], null, false),
+    water = 
+    /* color: #98ff00 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.83346228706108, -31.97913057030015],
+          [115.83346228706108, -31.99645655134745],
+          [115.84359030830132, -31.99645655134745],
+          [115.84359030830132, -31.97913057030015]]], null, false),
+    vegetacion = 
+    /* color: #0b4a8b */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.82676749335991, -31.95877890612424],
+          [115.82676749335991, -31.968245181439315],
+          [115.8359513770269, -31.968245181439315],
+          [115.8359513770269, -31.95877890612424]]], null, false),
+    urbano = 
+    /* color: #ffc82d */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      },
+      {
+        "type": "rectangle"
+      },
+      {
+        "type": "rectangle"
+      },
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.MultiPolygon(
+        [[[[115.92006545173393, -31.986883608561822],
+           [115.92006545173393, -31.99256175188065],
+           [115.92358450996147, -31.99256175188065],
+           [115.92358450996147, -31.986883608561822]]],
+         [[[115.94057898627983, -31.985864417428516],
+           [115.94057898627983, -31.98884915948641],
+           [115.94426970588432, -31.98884915948641],
+           [115.94426970588432, -31.985864417428516]]],
+         [[[115.92461447822319, -32.001878968942805],
+           [115.92461447822319, -32.00384419850916],
+           [115.92624526130425, -32.00384419850916],
+           [115.92624526130425, -32.001878968942805]]],
+         [[[115.94504218208061, -31.97822012303596],
+           [115.94504218208061, -31.979166594027078],
+           [115.94675879585014, -31.979166594027078],
+           [115.94675879585014, -31.97822012303596]]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//////////////// Definir la imagen a clasificar
+
+var bands = ["B2", "B3", "B4", "B8", "B8A", "B11" ]
+var imagen = imageCollection.filterBounds(AOI).mean().select(bands)
+
+
+
+print(imagen, "Imagen a clasificar")
+Map.addLayer(imagen.clip(AOI), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "Imagen a clasificar")
+
+///////////////////////////// Definir areas de entrenamiento 
+
+var featureWater = ee.Feature(water).set("Class", 1).set("nombre", "agua")
+var featureVeg = ee.Feature(vegetacion).set("Class",2).set("nombre", "vegetacion")
+var featureUrbano = ee.Feature(urbano).set("Class", 3).set("nombre", "urbano")
+
+
+////////////////////////// Crear una colección de objetos (Training Feature, TF)
+
+var TF = ee.FeatureCollection([featureWater, featureVeg, featureUrbano])
+
+Map.addLayer(TF, {}, "TF")
+print(TF)
+
+///////////////////////// Obtener valores espectrales de cada uno de los pixeles dentro de nuestras áreas de entrenamiento
+///// y asociarlos con la clase de cada una de nuestras áreas de entrenamiento
+///// Output de esta acción: obtener una colección de objetos con tantos puntos como píxeles hay dentro de nuestras áreas de entrenamiento
+
+var training = imagen.sampleRegions({
+  collection: TF,
+  properties: ["Class"],
+  scale: 10
+})
+
+//print(training.size())
+print(training.limit(10))
+
+///////////////////////////////////////////////////////////// ML Algorithm para nuetsra clasificación (Minimum Distance)
+
+///////////////////// 1. Entrenar algoritmo
+
+var trained = ee.Classifier.minimumDistance().train(training, "Class")
+
+///////////////////// 2. Clasificar imagen
+
+var classified = imagen.classify(trained)
+
+print(classified, "Imagen clasificada")
+
+Map.addLayer(classified.clip(AOI), {min:1, max:3, palette:["blue", "green", "red"]}, "Imagen clasificada")
+
+
+
+

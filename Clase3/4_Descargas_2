@@ -1,0 +1,29 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var SILO_ic = ee.ImageCollection("projects/eo-datascience-public/assets/silo_daily"),
+    geometry = 
+    /* color: #98ff00 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[113.88500144761427, -29.83526014601504],
+          [113.88500144761427, -32.837458996236215],
+          [117.57640769761426, -32.837458996236215],
+          [117.57640769761426, -29.83526014601504]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//Define the collection and filter it
+
+var SILO_rainfall = SILO_ic.select("daily_rain")
+                            .filterDate("2000-01-01","2000-01-10")
+
+print(SILO_rainfall)
+
+
+// transform the collection to a single multi-band image limitations with more than 100 bands
+var newImg_SILO = SILO_rainfall.toBands();
+print(newImg_SILO);
+
+// Map.addLayer(newImg);
+print(newImg_SILO.getDownloadURL({scale: 5000, region: geometry, name:"Rainfall_collection"}));

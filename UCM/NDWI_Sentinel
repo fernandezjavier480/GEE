@@ -1,0 +1,129 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var imageCollection = ee.ImageCollection("COPERNICUS/S2_SR"),
+    geometry = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-73.81959777832031, 5.509582993271822],
+          [-73.81959777832031, 5.41559802055434],
+          [-73.6537728881836, 5.41559802055434],
+          [-73.6537728881836, 5.509582993271822]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                    INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                             ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                               Índices de Veg
+ ===========================================================================================*/
+/*Mapear una función sobre una colección es clave para que Earth Engine funcione. Comience desde
+la sección anterior o al menos las mismas importaciones. Asigne una función simple sobre una lista.
+Use la lista para algo útil (hacer composiciones anuales). Romper cosas.
+● Utilice map() en lugar de bucles for para aplicar una operación a cada 
+elemento de una colección. (Todavía necesita bucles for para algunas cosas 
+del lado del cliente, como las interfaces de usuario).*/
+//===========================================================================================//
+
+/**
+ * Function to mask clouds using the Sentinel-2 QA band
+ * @param {ee.Image} image Sentinel-2 image
+ * @return {ee.Image} cloud masked Sentinel-2 image
+ */
+
+
+function maskS2clouds(image) {
+  var qa = image.select('QA60');
+
+  // Bits 10 and 11 are clouds and cirrus, respectively.
+  var cloudBitMask = 1 << 10;
+  var cirrusBitMask = 1 << 11;
+
+  // Both flags should be set to zero, indicating clear conditions.
+  var mask = qa.bitwiseAnd(cloudBitMask).eq(0)
+      .and(qa.bitwiseAnd(cirrusBitMask).eq(0));
+
+  return image.updateMask(mask).divide(10000);
+}
+
+var dataset = ee.ImageCollection('COPERNICUS/S2_SR')
+                  .filterDate('2020-01-01', '2020-01-30')
+                  // Pre-filter to get less cloudy granules.
+                  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',20))
+                  .map(maskS2clouds);
+
+var visualization = {
+  min: 0.0,
+  max: 0.3,
+  bands: ['B4', 'B3', 'B2'],
+};
+
+Map.setCenter(-73.7475, 5.4602, 12);
+
+Map.addLayer(dataset.mean(), visualization, 'RGB');
+var addNDWI = function(image) {
+  var ndwi = image.normalizedDifference(['B3', 'B8']).rename('NDWI');
+  return image.addBands(ndwi);
+};
+
+// Defina una función que agregará una banda NDVI a una imagen Landsat 8.
+var addNDVI = function(image) {
+  var ndvi = image.normalizedDifference(['B5', 'B4']).rename('NDVI');
+  return image.addBands(ndvi);
+};
+
+///////////////////////////////////////////////////////
+
+var s2mean=(dataset.mean());
+var ndviVisParams = {
+  bands: 'NDVI', 
+  min: 0, 
+  max: 1, 
+  palette: ['white', 'green']
+};
+
+//////////
+var s2mean = (dataset.mean());
+
+/// visual
+
+var ndviVisParams2 = {
+  bands: 'NDWI', 
+  min: 0, 
+  max: 1, 
+  palette: ['white', 'blue']
+};
+
+//Visualización NDWI Sentinel
+//////////////////
+
+Map.addLayer(addNDWI(s2mean), ndviVisParams2, 'Test NDWI',false );
+Map.addLayer(addNDVI(s2mean), ndviVisParams, 'Test NDVI',false );
+
+///////////
+
+var conNDWI =  dataset.map(addNDWI).map(addNDVI);
+//var conNDWI =  dataset.map(addNDVI);
+
+// Verificar que todas las img de la coll tengan NDVI:
+Map.addLayer(conNDWI.select('NDWI'), ndviVisParams2, 'S2 con NDWI');
+
+Map.addLayer(conNDWI.select('NDVI'), ndviVisParams, 'S2 con NDVI');
+
+Export.image.toDrive({
+  image: conNDWI,
+  description: 'NDWI_SENTINEL',
+  folder: 'GEE',
+  scale: 1000,
+  crs: 'EPSG:4326',
+  maxPixels: 1e10});

@@ -1,0 +1,182 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #00ffff */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-73.77201748046875, 10.88635939329504],
+          [-73.77201748046875, 10.77170838061052],
+          [-73.55641079101562, 10.77170838061052],
+          [-73.55641079101562, 10.88635939329504]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//NDSI
+/**
+/**
+ * Function to mask clouds based on the pixel_qa band of Landsat SR data.
+ * @param {ee.Image} image Input Landsat SR image
+ * @return {ee.Image} Cloudmasked Landsat image
+ */
+var cloudMaskL457 = function(image) {
+  var qa = image.select('pixel_qa');
+  // If the cloud bit (5) is set and the cloud confidence (7) is high
+  // or the cloud shadow bit is set (3), then it's a bad pixel.
+  var cloud = qa.bitwiseAnd(1 << 5)
+                  .and(qa.bitwiseAnd(1 << 7))
+                  .or(qa.bitwiseAnd(1 << 3));
+  // Remove edge pixels that don't occur in all bands
+  var mask2 = image.mask().reduce(ee.Reducer.min());
+  return image.updateMask(cloud.not()).updateMask(mask2);
+};
+
+var L4 = ee.ImageCollection('LANDSAT/LT04/C01/T1_SR')
+                  .filterDate('1988-01-01', '1988-01-30')
+                 // .map(cloudMaskL457)
+                  .filterBounds(geometry)
+                  .map(function(image) {
+                  return image.clip(geometry);
+                  });
+
+var visParams = {
+  bands: ['B3', 'B2', 'B1'],
+  min: 0,
+  max: 3000,
+  gamma: 1.4,
+};
+Map.setCenter(-73.9066, 11.0751, 10);
+Map.addLayer(L4.median(), visParams, 'LANDSAT 4');
+
+var media = L4.limit(3).reduce(ee.Reducer.max());
+
+// Export the ROI satellite imagery in the Tasks tab
+ Export.image.toDrive({
+  image: media.float(),
+//  bands: ['B3', 'B2', 'B1'],
+  description: 'L4_Composite',
+  scale: 30,
+//  maxPixels: 3784216672400,
+  region: geometry,
+  });
+
+
+///////////////////////////////////
+// Calcular Índice de nieve NDSI
+var NDSI = media.normalizedDifference(['B2_max', 'B5_max']);
+var visualNDSI =  {min:0.4, max: 1, palette: ['#1214d6', '#2e75d6', '#0fa3d6', '#24cad6']};
+Map.addLayer(NDSI.clip(geometry), visualNDSI, 'NDSI');
+
+//export
+Export.image.toDrive({
+  image: NDSI.float(),
+  description: 'NDSI_image',
+  scale: 30,
+ // region: geometry, // .geometry().bounds() needed for multipolygon
+  crs: 'EPSG:32718',
+  folder: 'GEE',
+  maxPixels: 2000000000
+});
+
+// Display the result.
+//Map.addLayer(slopesmrt.clip(NDSI), {min: -1, max: 0.39, palette: ['black', 'white']},'no snow');
+Map.addLayer(NDSI.clip(geometry), {min: 0.4, max: 1, palette: ['black', 'blue']}, 'snow');
+
+// reclasificador
+var NDSI_class = ee.Image(1)
+          .where(NDSI.gt(-1).and(NDSI.lte(0.39)), 1)
+          .where(NDSI.gt(0.39).and(NDSI.lte(1)), 2);
+
+Map.addLayer(NDSI_class.clip(geometry), { palette: ['black', 'red']}, 'snow_class'); 
+
+// crear vectores
+var vectors = NDSI_class.reduceToVectors({
+  geometry: geometry,
+//  crs: nl2012.projection(),
+  scale: 30,
+  geometryType: 'polygon',
+  eightConnected: false,
+  labelProperty: 'zone',
+//  reducer: ee.Reducer.mean()
+});
+
+// Make a display image for the vectors, add it to the map.
+var display = ee.Image(0).updateMask(0).paint(vectors, '000000', 3);
+Map.addLayer(display, {palette: '0CE5F0'}, 'vectors');
+
+// This field contains UNIX time in milliseconds.
+var timeField = 'system:time_start';
+
+var dataset = ee.ImageCollection('LANDSAT/LE07/C01/T1_8DAY_NDSI')
+                  .filterDate('2000-01-01', '2020-12-31')
+                  .filterBounds(geometry)
+                  .map(function(image) {
+                        return image.clip(geometry);
+                  });
+                  
+var colorized = dataset.select('NDSI');
+
+var colorizedVis = {
+  palette: ['000088', '0000FF', '8888FF', 'FFFFFF'],
+};
+
+Map.addLayer(colorized, colorizedVis, 'Colorized');
+
+///////////gráficos series
+/// Serie tiempo NDSI18 S Santa Marta
+
+var ts1 = ui.Chart.image.series({
+  imageCollection: dataset,
+  region: vectors,
+  reducer: ee.Reducer.mean(),
+  scale: 30,
+  xProperty: 'system:time_start'})
+  .setOptions({
+    title: 'Serie Temporal del Índice Normalizado de Nieve',
+    lineWidth: 1,
+    pointSize: 2.5,
+    vAxis:{title:'NDSI_mean'},
+    hAxis:{title:'Años'},
+    trendlines: {0: {
+        color: 'CC0000'
+      }},
+      lineWidth: 1,
+      pointSize: 3,
+  });
+  
+print(ts1);
+// Smoothing ---
+
+var join = ee.Join.saveAll({
+  matchesKey: 'images'
+});
+
+var timeField = 'system:time_start';
+
+var diffFilter = ee.Filter.maxDifference({
+  difference: 1000 * 60 * 60 * 24 * 17,
+  leftField: timeField, 
+  rightField: timeField
+});
+
+var threeNeighborJoin = join.apply({
+  primary: dataset, 
+  secondary: dataset, 
+  condition: diffFilter
+});
+
+var smoothed = ee.ImageCollection(threeNeighborJoin.map(function(image) {
+  var collection = ee.ImageCollection.fromImages(image.get('images'));
+  return ee.Image(image).addBands(collection.mean().rename('mean'));
+}));
+
+// Note that there is still a discontinuity in the chart.  While there may be
+// two neighbors, the pixel may be masked at one or all of those times.
+print(ui.Chart.image.series(
+  smoothed.select(['NDSI', 'mean']), vectors, ee.Reducer.mean(), 30)
+    .setSeriesNames(['NDSI', 'mean'])
+    .setOptions({
+      title: 'smoothed',
+      lineWidth: 1,
+      pointSize: 3,
+}));

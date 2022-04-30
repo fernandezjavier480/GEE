@@ -1,0 +1,49 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var dsm = ee.Image("JAXA/ALOS/AW3D30_V1_1");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                           INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                             ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                           Cálculos sobre Imágenes
+ ===========================================================================================*/
+ //Obtener el valor de la banda de elevación en metros.
+ var elev= dsm.select("AVE");
+ 
+ //Este calculo basura es solo un ejemplo de matemáticas con imágenes.
+ var junk = elev.add(3);
+ Map.addLayer (junk,{min:0,max:500},"dsm+3m",false);
+ var elevPalet= ["blue"];
+ Map.addLayer (junk,{min:0,max:500,palette:elevPalet},"dsm",true);
+ 
+ //Operaciones relacionales sobre imágenes.Encuentra todos los lugares
+ //OPERADORES BOLEANOS: elevación superior a 500m.Imagen Binaria.
+ 
+ var elevGt500=elev.gt(2400);
+ 
+ //MASCARA: Este es un truco útil. Establece todos los píxles cero en enmascarados(sin datos).
+ elevGt500=elevGt500.updateMask(elevGt500);
+ //agregar mapa.
+ Map.addLayer (elevGt500,{palette:["yellow"]},"elev mayor a 500",true);
+ 
+//Use un método estático para un cálculo más complejo
+var terrain=ee.Terrain.products (elev)
+//Imprimir para descubrir que bandas hay allí
+print("terrain",terrain)
+//Visualizar la iluminación
+Map.addLayer(terrain,{bands:["hillshade"]},"ilimuna");
+//Visualizar la pendiente
+Map.addLayer(terrain,{bands:["slope"]},"pendiente");
+ 
+ 
+  
+ 
+ 

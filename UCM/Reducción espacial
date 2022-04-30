@@ -1,0 +1,74 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var dsm = ee.Image("JAXA/ALOS/AW3D30_V1_1"),
+    AOI = 
+    /* color: #98ff00 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-73.59727595251957, 4.930078032470386],
+          [-73.59727595251957, 4.294937988181347],
+          [-72.88865778845707, 4.294937988181347],
+          [-72.88865778845707, 4.930078032470386]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+/*==========================================================================================
+            PDI MEDIANTE EL USO DE LA PLATAFORMA GOOGLE EARTH ENGINE - GEE
+ ===========================================================================================
+  UNIDAD 1:                    INTRODUCCIÓN A GEE
+ ===========================================================================================
+  DOCENTE:                     ALEXANDER ARIZA
+ ===========================================================================================
+  Taller dirigido a profesionales y estudiantes con experiencia en el área de la geomática que  
+  quieran perfeccionarse en el uso general de la plataforma Google Earth Engine - GEE, como 
+  herramienta en el procesaiento digital de imágenes.
+ ===========================================================================================
+  Script:                     Reducción espacial
+ ===========================================================================================*/
+/*Un reductor es un objeto Earth Engine que representa una forma de agregar 
+datos o calcular una estadística. Demuestre reducciones espaciales. 
+Empiece desde el guión anterior, en donde debería tener ya un DSM y una máscara. 
+La máscara es la imagen de umbral (elevGt500) (pixeles mayores 500m). Seleccione la herramienta
+de geometría de polígono y dibuje un triángulo (o un polígono más complejo) en el mapa sobre un 
+lugar donde elevGt500 es verdadero (1). 
+En algún lugar después del código de la sección 2, agregue esto:*/
+//===========================================================================================//
+
+// Obtener la elevación en banda de metros. 
+var elev = dsm.select('AVE');
+
+// Operaciones relacionales sobre imágenes. Encuentra todos los lugares
+// elevación superior a 500 metros. Imagen binaria.
+var elevGt500 = elev.gt(500).rename('elevGt500');
+
+//Este es un truco útil. Establece todos lospíxeles cero en enmascarados (Sin datos).
+ elevGt500= elevGt500.updateMask( elevGt500);
+ Map.addLayer( elevGt500,{palette:["yellow"]},"elevGt500",false);
+ 
+ //Use un método estático para un cálculo más complejo
+var terrain=ee.Terrain.products (elev)
+//Imprimir para descubrir que bandas hay allí
+print("terrain",terrain)
+//Visualizar la iluminación
+Map.addLayer(terrain,{bands:["hillshade"]},"sombreado");
+
+//Dibuja un polígono. Demuestre el manejo de las gherramientas de dibujo. 
+
+// Calcula la pendiente media en un polígono dibujado a mano.
+var slopeDict = terrain.select('slope').reduceRegion({
+  reducer: ee.Reducer.mean(), 
+  geometry: AOI,
+  scale: 30 // metros!
+});
+print('Pendiente media:',slopeDict);
+
+//Calcular el área de elevaciones superiores a 500 metros
+var areaDict=elevGt500
+.multiply(ee.Image.pixelArea())//Metros cuadrados!
+.reduceRegion({
+  reducer:ee.Reducer.sum(),
+  geometry:AOI,
+  scale:30//meters
+});
+print("area > 500 metros", areaDict);//Metros cuadrados!

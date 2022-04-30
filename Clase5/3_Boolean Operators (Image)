@@ -1,0 +1,47 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = 
+    /* color: #00ffff */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[115.78703619366784, -31.9005236634902],
+          [115.78703619366784, -32.05021703533105],
+          [115.98685003644128, -32.05021703533105],
+          [115.98685003644128, -31.9005236634902]]], null, false),
+    s2 = ee.ImageCollection("COPERNICUS/S2_SR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var region = geometry
+
+/////////// Cargar la coleccion de imagenes
+
+var imagen = s2.filterBounds(geometry).filterDate("2019-01-01", "2019-12-31").median()
+
+Map.addLayer(imagen.clip(region), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "Imagen RGB")
+
+//////////// Crear boolean mask
+
+var im_lowSWIR = imagen.select("B11").lte(700)
+
+Map.addLayer(im_lowSWIR.clip(region), {}, "lowSWIR")
+
+////////// Aplicar máscara en RGB
+
+var im_s2 = imagen.updateMask(im_lowSWIR)
+
+Map.addLayer(im_s2.clip(region), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "Imagen RGB enmascarada")
+
+///// Transformar noData en valor (el que sea)
+
+var noData_imS2 = im_s2.unmask(-999)
+
+Map.addLayer(noData_imS2.clip(region), {min:0, max:3500, bands:["B4", "B3", "B2"]}, "Imagen RGB enmascarada (noData)")
+
+////////// selfMask
+
+var selfMask_lowSWIR = im_lowSWIR.selfMask()
+
+Map.addLayer(selfMask_lowSWIR.clip(region), {}, "selfMask")

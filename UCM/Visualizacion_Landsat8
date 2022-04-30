@@ -1,0 +1,156 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = /* color: #d63000 */ee.Geometry.Point([-63.18567294206022, 10.13554158907035]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+//                          UNIVERSIDAD CATÓLICA DE MANIZALES 
+//              Maestría en Teledetección - Facultad de Ingeniería y Arquitectura
+//===========================================================================================
+// ASIGNATURA:              CAMBIO CLIMÁTICO Y GESTIÓN DE RIESGO
+//===========================================================================================
+// UNIDAD 3:        Procesamiento de datos en la nube para el análisis de desastres
+//                              (Google Earth Engine - GEE) 
+//===========================================================================================
+// DOCENTE:                            ALEXANDER ARIZA
+//===========================================================================================
+// ALUMNO(S):                             
+//===========================================================================================
+// Este taller práctico en GEE está dirigido al uso general de la plataforma Google Earth 
+// Engine, como herramienta de Integración de información para explicar relaciones causa y 
+// efecto, derivadas del análisis, procesamiento y explotación de datos en la nube para el 
+// análisis del cambio Global y gestión de riesgos. 
+//===========================================================================================
+// ************De igual forma, esta seraa la platilla para la presentación de casos prácticos
+// ************por parte de los estudiantes al terminar el modulo.***************************
+//===========================================================================================
+// Script:                    VISUALIZACIÓN DE IMÁGENES LANDSAT 8
+//===========================================================================================
+// El siguiente Script contiene una serie de procedimientos que permite ver las colecciones 
+// de datos Landsat 8, en una fecha o intervalo de tiempo especifica y en región de interes, 
+// para el procesamiento digital de imagenes.
+//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+//*******************************************************************************************
+//                      1. IMPORTE LA COLLECIÓN DE IMAGENES LANDSAT 8    
+
+// NOTA: Antes de iniciar lea atentamente las dos opciones para definir su área de interés!!!
+// Definimos una variable llamada "Landsat8", e incorporamos la colección T1_SR, Nivel 1 
+// de reflectancia superficial Landsat 8 del USGS:
+var Landsat8 = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR");
+
+//                       2. SELECCIONA UN ÁREA DE INTERÉS - AOI -  
+
+// Primero defina su área de interés con un punto (o línea o polígono) usando las herramientas
+// de dibujo de geometría, para ello definimos una variable llamada "punto" he insertamos un 
+// punto con ayuda del editor a la izquierda.
+// NOTA: Usaremos como área de interés la Zona de la Sierra Nevada de santa Marta:
+// -->Elimine el símbolo (//) a continuación y pulse (Run), GEE reconocerá el punto de ejemplo:
+// var geometry = /* color: #0b4a8b */ee.Geometry.Point([-73.68946502729776, 10.503225369996736]);
+var punto = geometry;
+
+//                       3. FILTRAR POR ÁREA Y PERIODO DE TIEMPO
+
+// Con la ayuda de la función "filterBounds" filtramos por el área definida en el punto ant:
+var filtroespacio = Landsat8.filterBounds(punto);
+
+// La función print() permite obtener información sobre un objeto, imprime la información
+// en la consola de salida, de esta manera podremos examinar que imágenes se encuentran 
+// disponibles para esa área.
+print('filtroespacio', filtroespacio);
+
+// Ahora declaramos una variable "filtrotemporal", para filtrar la colección a un intervalo de 
+// tiempo especifico, mediante la función "ee.Filter.date":
+var filtrotemporal = filtroespacio.filterDate('2020-01-01', '2020-06-20');
+
+// Con print() imprimimos la variable anterior para ver que imágenes se encuentran disponibles:
+print('filtrotemporal', filtrotemporal);
+
+// Declaramos una variable llamada "escena" y seleccionaremos la primera imagen, la función 
+// devuelve el primer elemento de la colección:
+var escena = filtrotemporal.first();
+
+// Mediante la funcion "Map.centerObject", visualiza el area de estudio como centro del mapa,
+// el número despues de la como (9) representa el nivel de zoom, en donde los números más altos
+// indican una escala más grande (más acercada):
+Map.centerObject(escena, 9);
+
+// Con print() imprimimos la variable anterior para ver la imágen seleccionada:
+print('escena',escena);
+
+//                       4. AGREGAR DATOS AL MAPA
+
+// Primero definimos la variable "visual", en donde definimos composicion de bandas, rangos 
+// de visualización "mini y max" y el realce visual mediante la funcion "gamma":
+var visual = {bands: ['B4', 'B3', 'B2'], min:0, max: 3000, gamma: 1.5};
+
+// Además de imprimir la información en la consola, podemos agregar datos al mapa mediante 
+// la función Map.addLayer() agrega la variable antes "escena", con los parámetros de
+// visualización previamente definidos: (primero se indica la variable que contiene la 
+// información, luego la variable que describe la visualización, y entre asteriscos '__' el
+// nombre que tendrá la capa una vez desplegada):
+Map.addLayer(escena, visual, 'color verdadero'); 
+
+//                       5. COMPOSICIÓN EN FALSO COLOR
+
+// Ahora que ya conocen la forma de hacer composiciones, pueden crear diferentes 
+// combinaciones con el fin de resaltar las coberturas objetivo. Por ejemplo, crearemos una
+// combinacion SWIR/NIR/GREEN para resaltar la vegetación en rojo.
+// Para ello, creamos una nueva variable de visualización "visual2" y la llamaremos 'falso color',
+// adicionalmente la función "opacity" nos permitira manipular el nivel de transparencia: 
+var visual2 = {bands: ['B5', 'B4', 'B3'], min:0, max: 3000, gamma: 1.5, opacity:0.9 };
+Map.addLayer(escena, visual2, 'falso color'); 
+
+//                       6. REDUCIR UNA COLECCIÓN 
+
+// La reducción es la forma de agregar datos a lo largo del tiempo, el espacio, las bandas, 
+// las matrices y otras estructuras de datos en Google Earth Engine. Existen varios métodos. 
+// Por ejemplo, puede hacer una composición de una colección de imagenes “ImageCollection”, 
+// utilizando la función “reduce()”, para reducir las imágenes de la colección a una sola 
+// imagen. Por ejemplo, podemos crear una imagen de la composición del valor de la mediana 
+// de las tres (3) escenas menos nubladas de la colección Landsat 8 definida anteriormente:
+
+// Cargue la coleccion Landsat 8, en la variable "colecc".
+var collec = ee.ImageCollection("LANDSAT/LC08/C01/T1_SR")
+
+// filtre por fecha y localización.
+  .filterBounds(punto)
+  .filterDate('2018-01-01', '2018-12-31')
+  
+// Ordenar por nivel de nubosidad.
+  .sort('CLOUD_COVER');
+
+// Calcule la mediana de cada píxel para cada banda de las 3 escenas menos nubladas.
+var mediana = collec.limit(3).reduce(ee.Reducer.median());
+
+// Cargamos los resultados de la reducción en un nuevo mapa llamado 'Landsat mediana'.
+var visual3 = {bands: ['B4_median', 'B3_median', 'B2_median'], min:0, max: 3000, gamma: 1.5};
+Map.addLayer(mediana, visual3, 'Landsat mediana'); 
+
+//                       7. ESTADÍSTICA DE UNA REGIÓN
+
+// Ahora suponga que la tarea consiste en calcular los valores medios de píxeles dentro de un 
+// área de interés específica, para el caso utilizamos la coleccion definida anteriormente 
+// llamada "collec", para ello utilizamos la función "reduceRegion()".
+// Primero creamos un rectángulo de la región de interés y lo visualizamos, basta con indicar
+// las coordenadas de la esquina superior derecha e inferior izquierda.
+var region = ee.Geometry.Rectangle(-73.72319, 10.84922, -73.68723, 10.8305);
+Map.addLayer(region, {'color': 'FF0000', 'width': '0.5'}, 'Poligono')
+
+// Has zoom sobre la región de interés:
+Map.centerObject(region, 12);
+
+// Obtenemos un diccionario del valor de la media de la región. 
+var media = mediana.reduceRegion({
+  reducer: ee.Reducer.mean(),
+  geometry: region,
+  scale: 30
+});
+
+// Ahora, en la consola imprimiremos los resultados del valor de la media para cada banda de
+// la imagen reducida a la mediana.
+print(media, 'valor de la media');
+
+// RESPONDA:
+// Repita el procedimiento para elteadistico de Max y Min y responda:
+// ¿Cuál es el valor máximo para la banda 5?        = (               )
+// ¿Cuál banda presenta un mayor valor de la media? = (               )
+// ¿Cuál es el valor minimo de todas las bandas?    = (               )
+//:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+//*******************************************************************************************

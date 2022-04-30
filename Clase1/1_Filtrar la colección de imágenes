@@ -1,0 +1,132 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var polygon = 
+    /* color: #d63000 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      },
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.MultiPolygon(
+        [[[[-71.04829622030718, 5.185693418657074],
+           [-71.04829622030718, 4.87652579063675],
+           [-70.89998079061968, 4.87652579063675],
+           [-70.89998079061968, 5.185693418657074]]],
+         [[[-73.19886995077593, 3.531613863556562],
+           [-73.19886995077593, 3.2684063322583317],
+           [-73.11097932577593, 3.2684063322583317],
+           [-73.11097932577593, 3.531613863556562]]]], null, false),
+    s2 = ee.ImageCollection("COPERNICUS/S2_SR");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+////// Filtrar la colección de imágenes
+
+var filter = s2.filterBounds(polygon)
+
+//print(filter, "s2 Filtro")
+
+var filter2 = filter.filterDate("2020-01-01", "2020-12-31")
+
+
+print(filter2, "s2 filtro fecha")
+
+/////// Filtrar utilizando metadatos
+
+var filter3 = filter2.filterMetadata("SPACECRAFT_NAME", "equals", "Sentinel-2A")
+
+print(filter3, "s2 Filtro por metadatos")
+
+
+//// Filtrar por porcentaje de nubosidad
+
+
+var filterclouds = ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 10)
+
+var filter4 = filter3.filter(filterclouds)
+
+print(filter4, "Filtro por nubosidad")
+
+
+//// Seleccionar la banda 8
+
+var imagen = filter4.first()
+
+
+Map.addLayer(imagen, {min:0, max:3500, bands:["B4","B3","B2"]}, "Imagen 1")
+Map.addLayer(imagen, {min:0, max:3500, bands:["B8","B3","B2"]}, "Imagen 2")
+
+
+//// Spatial reducer
+
+
+var NIR = imagen.select("B3")
+
+print(NIR)
+
+var reducer_minMax = ee.Reducer.minMax()
+
+var ImageNIRminMax = NIR.reduceRegion(reducer_minMax, polygon)
+
+print(ImageNIRminMax)
+
+/// Reduce Collection
+var reduceMean = ee.Reducer.mean()
+
+var image_mean = filter4.reduce(reduceMean)
+
+print(image_mean, "Image mean")
+
+Map.addLayer(image_mean, {min:0, max:3500, bands:["B4_mean", "B3_mean", "B2_mean"]}, "RGB medio")
+
+
+////// NDVI (Índice de Vegetación)
+
+function ndvi(imagen){
+ 
+  var NIR = imagen.select("B8")
+  var RED = imagen.select("B4")
+   
+  var NDVI = (NIR.subtract(RED)).divide(NIR.add(RED).rename("NDVI"))
+  
+  return NDVI
+}
+
+
+var NDVI_col = filter4.map(ndvi)
+
+
+print(NDVI_col, "NDVI coleccion")
+
+
+Map.addLayer(NDVI_col.first(), {min:0, max:1, palette:["red", "orange", "green", "blue"]}, "NDVI")
+
+
+
+////Reducir la colección de ndvi a una sola imagen que muestre el ndvi medio
+
+
+var NDVI_medio = NDVI_col.reduce(reduceMean)
+
+Map.addLayer(NDVI_medio, {min:0, max:1, palette:["red", "orange", "green", "blue"]}, "NDVI_medio")
+
+
+
+///Mapa categórico del NDVI
+
+
+var NDVI_categorico = ee.Image(1).rename("Categoria")
+.where(NDVI_medio.gt(-1).and(NDVI_medio.lt(0.1)),1)
+.where(NDVI_medio.gt(0.1).and(NDVI_medio.lt(0.5)),2)
+.where(NDVI_medio.gt(0.5),3)
+
+Map.addLayer(NDVI_categorico.clip(polygon), {min:1, max:3, palette:["blue", "grey", "green"]}, "NDVI categorico")
+
+
+
+
+
+
+

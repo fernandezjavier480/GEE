@@ -1,0 +1,46 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var image = ee.Image("users/juantorres-batllo/SantLlor"),
+    image2 = ee.Image("users/juantorres-batllo/DEM_SLLo"),
+    SRTM = ee.Image("USGS/SRTMGL1_003"),
+    table = ee.FeatureCollection("FAO/GAUL/2015/level0"),
+    geometry = 
+    /* color: #0b4a8b */
+    /* shown: false */
+    ee.Geometry.Point([-3.0242598996766867, 41.776291977454314]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+
+var Spain = table.filterBounds(geometry).geometry()
+
+Map.addLayer(SRTM.clip(Spain), {min:0, max:3400, palette:["orange", "yellow", "green", "blue", "white"]}, "DEM Spain")
+
+
+///////// Pendientes
+
+var slope = ee.Terrain.slope(SRTM).clip(Spain)
+
+Map.addLayer(slope, {min:0, max:30, palette:["red","orange", "yellow", "green", "blue", "white"]}, "Slope Spain")
+
+////////// Orientación
+
+var orientacion = ee.Terrain.aspect(SRTM).clip(Spain)
+
+Map.addLayer(orientacion, {min:0, max:360, palette:["red","orange", "yellow", "green", "blue", "white"]}, "Orientación Spain")
+
+
+///////// Hillshadow
+
+var azimuth = 90
+
+var zenith = 45
+
+var hillshadow = ee.Terrain.hillShadow(SRTM, azimuth, zenith).clip(Spain)
+
+Map.addLayer(hillshadow, {min:0, max:1, palette:["black","white"]}, "HillShadow Spain")
+
+
+
+
+
+
+
+
